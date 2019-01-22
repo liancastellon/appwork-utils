@@ -55,6 +55,12 @@ public class BodyInputStream extends InputStream {
 
     private int singleDotLineState = -1;
 
+    /**
+     * RFC: https://tools.ietf.org/html/rfc3977#section-3.1.1
+     * 
+     * @return
+     * @throws IOException
+     */
     @Override
     public synchronized int read() throws IOException {
         if (singleDotLineState == 5) {
@@ -66,43 +72,58 @@ public class BodyInputStream extends InputStream {
             } else {
                 switch (singleDotLineState) {
                 case -1:
+                    // current:
                     // special handling in case the current line is already the last single dot line
                     if (ret == '.') {
+                        // next: 0d0a2e
                         singleDotLineState = 3;
                     } else {
                         singleDotLineState = 0;
                     }
                     break;
                 case 0:
+                    // current:
                     if (ret == 13) {
+                        // next: 0d
                         singleDotLineState++;
                     } else {
                         singleDotLineState = 0;
                     }
                     break;
                 case 1:
+                    // current: 0d
                     if (ret == 10) {
+                        // next: 0d0a
                         singleDotLineState++;
                     } else {
                         singleDotLineState = 0;
                     }
                     break;
                 case 2:
-                    if (ret == '.') {
+                    // current: 0d0a
+                    if (ret == 13) {
+                        // next: 0d0a0d -> 0d
+                        singleDotLineState = 1;
+                    } else if (ret == '.') {
+                        // next: 0d0a2e
                         singleDotLineState++;
                     } else {
                         singleDotLineState = 0;
                     }
                     break;
                 case 3:
+                    // current: 0d0a2e
                     if (ret == 13) {
+                        // next: 0d0a2e0d
                         singleDotLineState++;
                     } else {
                         singleDotLineState = 0;
                     }
                     break;
                 case 4:
+                    // current: 0d0a2e0d
                     if (ret == 10) {
+                        // next: 0d0a2e0d0a
                         singleDotLineState++;
                     } else {
                         singleDotLineState = 0;
