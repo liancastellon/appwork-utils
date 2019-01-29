@@ -44,8 +44,12 @@ import java.net.URLEncoder;
 public class URLEncode {
     private static final String RFC2396CHARS = "0123456789" + "abcdefghijklmnopqrstuvwxyz" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "-_.!~*'()";
 
-    /* http://www.ietf.org/rfc/rfc2396.txt */
     public static String encodeRFC2396(final String input) throws UnsupportedEncodingException {
+        return encodeRFC2396((CharSequence) input);
+    }
+
+    /* http://www.ietf.org/rfc/rfc2396.txt */
+    public static String encodeRFC2396(final CharSequence input) throws UnsupportedEncodingException {
         final StringBuilder sb = new StringBuilder();
         for (int i = 0; i < input.length(); i++) {
             final char ch = input.charAt(i);
@@ -79,86 +83,96 @@ public class URLEncode {
     }
 
     public static String decodeURIComponent(final String input, final String charSet, final boolean ignoreDecodeError) throws UnsupportedEncodingException, IllegalArgumentException {
+        return decodeURIComponent((CharSequence) input, charSet, ignoreDecodeError);
+    }
+
+    public static String decodeURIComponent(final CharSequence input, final String charSet, final boolean ignoreDecodeError) throws UnsupportedEncodingException, IllegalArgumentException {
         if (input == null) {
             return null;
-        }
-        final StringBuilder ret = new StringBuilder();
-        final StringBuilder decode = new StringBuilder("");
-        int nextStep = 0;
-        for (int i = 0; i < input.length(); i++) {
-            final char ch = input.charAt(i);
-            if (ch == '%') {
-                decode.append(ch);
-                nextStep = 1;
-            } else {
-                switch (nextStep) {
-                case 1:
-                case 2:
+        } else {
+            final StringBuilder ret = new StringBuilder();
+            final StringBuilder decode = new StringBuilder("");
+            int nextStep = 0;
+            for (int i = 0; i < input.length(); i++) {
+                final char ch = input.charAt(i);
+                if (ch == '%') {
                     decode.append(ch);
-                    nextStep++;
-                    break;
-                default:
-                    if (decode.length() > 0) {
-                        nextStep = 0;
-                        try {
-                            ret.append(URLDecoder.decode(decode.toString(), charSet));
-                        } catch (IllegalArgumentException e) {
-                            if (ignoreDecodeError) {
-                                ret.append(decode);
-                            } else {
-                                throw e;
-                            }
-                        }
-                        decode.delete(0, decode.length());
-                    }
-                    ret.append(ch);
-                    break;
-                }
-            }
-        }
-        if (decode.length() > 0) {
-            try {
-                ret.append(URLDecoder.decode(decode.toString(), charSet));
-            } catch (IllegalArgumentException e) {
-                if (ignoreDecodeError) {
-                    ret.append(decode);
+                    nextStep = 1;
                 } else {
-                    throw e;
+                    switch (nextStep) {
+                    case 1:
+                    case 2:
+                        decode.append(ch);
+                        nextStep++;
+                        break;
+                    default:
+                        if (decode.length() > 0) {
+                            nextStep = 0;
+                            try {
+                                ret.append(URLDecoder.decode(decode.toString(), charSet));
+                            } catch (IllegalArgumentException e) {
+                                if (ignoreDecodeError) {
+                                    ret.append(decode);
+                                } else {
+                                    throw e;
+                                }
+                            }
+                            decode.delete(0, decode.length());
+                        }
+                        ret.append(ch);
+                        break;
+                    }
                 }
             }
+            if (decode.length() > 0) {
+                try {
+                    ret.append(URLDecoder.decode(decode.toString(), charSet));
+                } catch (IllegalArgumentException e) {
+                    if (ignoreDecodeError) {
+                        ret.append(decode);
+                    } else {
+                        throw e;
+                    }
+                }
+            }
+            return ret.toString();
         }
-        return ret.toString();
+    }
+
+    public static String encodeURIComponent(final CharSequence input) {
+        if (input == null) {
+            return null;
+        } else {
+            final StringBuilder sb = new StringBuilder();
+            final StringBuilder encode = new StringBuilder();
+            for (int i = 0; i < input.length(); i++) {
+                final char ch = input.charAt(i);
+                if (ch == ' ') {
+                    sb.append("%20");
+                } else if (URLEncode.RFC2396CHARS.indexOf(ch) != -1) {
+                    if (encode.length() > 0) {
+                        try {
+                            sb.append(URLEncoder.encode(encode.toString(), "UTF-8"));
+                        } catch (UnsupportedEncodingException ignore) {
+                        }
+                        encode.delete(0, encode.length());
+                    }
+                    sb.append(ch);
+                } else {
+                    encode.append(ch);
+                }
+            }
+            if (encode.length() > 0) {
+                try {
+                    sb.append(URLEncoder.encode(encode.toString(), "UTF-8"));
+                } catch (UnsupportedEncodingException ignore) {
+                }
+            }
+            return sb.toString();
+        }
     }
 
     public static String encodeURIComponent(final String input) {
-        if (input == null) {
-            return null;
-        }
-        final StringBuilder sb = new StringBuilder();
-        final StringBuilder encode = new StringBuilder();
-        for (int i = 0; i < input.length(); i++) {
-            final char ch = input.charAt(i);
-            if (ch == ' ') {
-                sb.append("%20");
-            } else if (URLEncode.RFC2396CHARS.indexOf(ch) != -1) {
-                if (encode.length() > 0) {
-                    try {
-                        sb.append(URLEncoder.encode(encode.toString(), "UTF-8"));
-                    } catch (UnsupportedEncodingException ignore) {
-                    }
-                    encode.delete(0, encode.length());
-                }
-                sb.append(ch);
-            } else {
-                encode.append(ch);
-            }
-        }
-        if (encode.length() > 0) {
-            try {
-                sb.append(URLEncoder.encode(encode.toString(), "UTF-8"));
-            } catch (UnsupportedEncodingException ignore) {
-            }
-        }
-        return sb.toString();
+        return encodeURIComponent((CharSequence) input);
     }
 }
