@@ -35,7 +35,6 @@ package org.appwork.utils;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileFilter;
@@ -48,7 +47,6 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.RandomAccessFile;
-import java.io.Reader;
 import java.io.UnsupportedEncodingException;
 import java.io.Writer;
 import java.net.URL;
@@ -75,8 +73,6 @@ public class IO {
         META_AND_DATA
     }
 
-    private static IOErrorHandler ERROR_HANDLER = null;
-
     public static void copyFile(final File in, final File out) throws IOException {
         IO.copyFile(in, out, null);
     }
@@ -86,100 +82,83 @@ public class IO {
     }
 
     public static void copyFile(ProgressFeedback progress, final File in, final File out, final SYNC sync) throws IOException {
+        FileInputStream fis = null;
+        FileOutputStream fos = null;
+        FileChannel inChannel = null;
+        FileChannel outChannel = null;
         try {
-            FileInputStream fis = null;
-            FileOutputStream fos = null;
-            FileChannel inChannel = null;
-            FileChannel outChannel = null;
-            try {
-                if (out.exists()) {
-                    throw new IOException("Cannot overwrite " + out);
-                }
-                if (!in.exists()) {
-                    throw new FileNotFoundException(in.getAbsolutePath());
-                }
-                fis = new FileInputStream(in);
-                fos = new FileOutputStream(out);
-                inChannel = fis.getChannel();
-                outChannel = fos.getChannel();
-                if (progress != null) {
-                    progress.setBytesTotal(in.length());
-                }
-                if (CrossSystem.isWindows()) {
-                    // magic number for Windows, 64Mb - 32Kb)
-                    // On the Windows plateform, you can't copy a file bigger
-                    // than
-                    // 64Mb,
-                    // an Exception in thread "main" java.io.IOException:
-                    // Insufficient
-                    // system resources exist to complete the requested service
-                    // is
-                    // thrown.
-                    //
-                    // For a discussion about this see :
-                    // http://forum.java.sun.com/thread.jspa?threadID=439695&messageID=2917510
-                    final int maxCount = 64 * 1024 * 1024 - 32 * 1024;
-                    final long size = inChannel.size();
-                    long position = 0;
-                    while (position < size) {
-                        position += inChannel.transferTo(position, maxCount, outChannel);
-                        if (progress != null) {
-                            progress.setBytesProcessed(position);
-                        }
-                    }
-                } else {
-                    /* we also loop here to make sure all data got transfered! */
-                    final int maxCount = 64 * 1024 * 1024 - 32 * 1024;
-                    final long size = inChannel.size();
-                    long position = 0;
-                    while (position < size) {
-                        position += inChannel.transferTo(position, maxCount, outChannel);
-                        if (progress != null) {
-                            progress.setBytesProcessed(position);
-                        }
+            if (out.exists()) {
+                throw new IOException("Cannot overwrite " + out);
+            }
+            if (!in.exists()) {
+                throw new FileNotFoundException(in.getAbsolutePath());
+            }
+            fis = new FileInputStream(in);
+            fos = new FileOutputStream(out);
+            inChannel = fis.getChannel();
+            outChannel = fos.getChannel();
+            if (progress != null) {
+                progress.setBytesTotal(in.length());
+            }
+            if (CrossSystem.isWindows()) {
+                // magic number for Windows, 64Mb - 32Kb)
+                // On the Windows plateform, you can't copy a file bigger
+                // than
+                // 64Mb,
+                // an Exception in thread "main" java.io.IOException:
+                // Insufficient
+                // system resources exist to complete the requested service
+                // is
+                // thrown.
+                //
+                // For a discussion about this see :
+                // http://forum.java.sun.com/thread.jspa?threadID=439695&messageID=2917510
+                final int maxCount = 64 * 1024 * 1024 - 32 * 1024;
+                final long size = inChannel.size();
+                long position = 0;
+                while (position < size) {
+                    position += inChannel.transferTo(position, maxCount, outChannel);
+                    if (progress != null) {
+                        progress.setBytesProcessed(position);
                     }
                 }
+            } else {
+                /* we also loop here to make sure all data got transfered! */
+                final int maxCount = 64 * 1024 * 1024 - 32 * 1024;
+                final long size = inChannel.size();
+                long position = 0;
+                while (position < size) {
+                    position += inChannel.transferTo(position, maxCount, outChannel);
+                    if (progress != null) {
+                        progress.setBytesProcessed(position);
+                    }
+                }
+            }
+            if (sync != null) {
                 if (sync != null) {
-                    if (sync != null) {
-                        switch (sync) {
-                        case DATA:
-                            outChannel.force(false);
-                            break;
-                        case META_AND_DATA:
-                            outChannel.force(true);
-                            break;
-                        default:
-                            break;
-                        }
+                    switch (sync) {
+                    case DATA:
+                        outChannel.force(false);
+                        break;
+                    case META_AND_DATA:
+                        outChannel.force(true);
+                        break;
+                    default:
+                        break;
                     }
-                }
-            } catch (final IOException e) {
-                throw e;
-            } finally {
-                try {
-                    fos.close();
-                } catch (final Throwable e) {
-                }
-                try {
-                    fis.close();
-                } catch (final Throwable e) {
                 }
             }
         } catch (final IOException e) {
-            if (IO.ERROR_HANDLER != null) {
-                IO.ERROR_HANDLER.onCopyException(e, in, out);
-            }
             throw e;
-        } catch (final RuntimeException e) {
-            if (IO.ERROR_HANDLER != null) {
-                IO.ERROR_HANDLER.onCopyException(e, in, out);
+        } finally {
+            try {
+                fos.close();
+            } catch (final Throwable e) {
             }
-            throw e;
-        } catch (final Error e) {
-            if (IO.ERROR_HANDLER != null) {
-                IO.ERROR_HANDLER.onCopyException(e, in, out);
+            try {
+                fis.close();
+            } catch (final Throwable e) {
             }
-            throw e;
         }
     }
 
@@ -227,8 +206,9 @@ public class IO {
         IO.copyFolderRecursive(src, dest, overwriteFiles, null, sync);
     }
 
+    @Deprecated
     public static IOErrorHandler getErrorHandler() {
-        return IO.ERROR_HANDLER;
+        return null;
     }
 
     public static String importFileToString(final File file) throws IOException {
@@ -296,12 +276,14 @@ public class IO {
         final byte[] bytes = IO.readFile(file, maxSize);
         if (bytes == null) {
             return null;
+        } else {
+            final String ret = BOM.read(bytes);
+            if (ret != null) {
+                return ret;
+            } else {
+                return new String(bytes, "UTF-8");
+            }
         }
-        final String ret = BOM.read(bytes);
-        if (ret != null) {
-            return ret;
-        }
-        return new String(bytes, "UTF-8");
     }
 
     public static void moveTo(final File source, final File dest, final FileFilter filter) throws IOException {
@@ -354,9 +336,11 @@ public class IO {
     }
 
     public static byte[] readFile(final File ressource) throws IOException {
-        int maxRead = -1;
+        final int maxRead;
         if (ressource.length() < Integer.MAX_VALUE) {
             maxRead = (int) ressource.length();
+        } else {
+            maxRead = -1;
         }
         return IO.readFile(ressource, maxRead);
     }
@@ -368,15 +352,12 @@ public class IO {
      * this function skips emtpy lines
      */
     public static byte[] readFile(final File ressource, final int maxSize) throws IOException {
-        FileInputStream fis = null;
+        final FileInputStream fis = new FileInputStream(ressource);
         try {
-            fis = new FileInputStream(ressource);
             return IO.readStream(maxSize, fis);
         } finally {
             try {
-                if (fis != null) {
-                    fis.close();
-                }
+                fis.close();
             } catch (final Throwable e) {
             }
         }
@@ -390,8 +371,9 @@ public class IO {
         final String ret = readFileToString(file);
         if (ret != null) {
             return ret.trim();
+        } else {
+            return null;
         }
-        return null;
     }
 
     public static String readInputStreamToString(final InputStream fis) throws UnsupportedEncodingException, IOException {
@@ -414,21 +396,6 @@ public class IO {
                 ret.append(line);
             }
             return ret.toString();
-        } catch (final IOException e) {
-            if (IO.ERROR_HANDLER != null) {
-                IO.ERROR_HANDLER.onReadStreamException(e, fis);
-            }
-            throw e;
-        } catch (final RuntimeException e) {
-            if (IO.ERROR_HANDLER != null) {
-                IO.ERROR_HANDLER.onReadStreamException(e, fis);
-            }
-            throw e;
-        } catch (final Error e) {
-            if (IO.ERROR_HANDLER != null) {
-                IO.ERROR_HANDLER.onReadStreamException(e, fis);
-            }
-            throw e;
         } finally {
             try {
                 f.close();
@@ -509,21 +476,6 @@ public class IO {
                     }
                 }
             }
-        } catch (final IOException e) {
-            if (IO.ERROR_HANDLER != null) {
-                IO.ERROR_HANDLER.onReadStreamException(e, input);
-            }
-            throw e;
-        } catch (final RuntimeException e) {
-            if (IO.ERROR_HANDLER != null) {
-                IO.ERROR_HANDLER.onReadStreamException(e, input);
-            }
-            throw e;
-        } catch (final Error e) {
-            if (IO.ERROR_HANDLER != null) {
-                IO.ERROR_HANDLER.onReadStreamException(e, input);
-            }
-            throw e;
         } finally {
             if (closeInput) {
                 try {
@@ -540,7 +492,6 @@ public class IO {
      * @throws IOException
      */
     public static byte[] readURL(final URL f) throws IOException {
-        // TODO Auto-generated method stub
         return IO.readURL(f, -1);
     }
 
@@ -551,9 +502,8 @@ public class IO {
      * @throws IOException
      */
     public static byte[] readURL(final URL url, final int maxSize) throws IOException {
-        InputStream input = null;
+        final InputStream input = URLStream.openStream(url);
         try {
-            input = URLStream.openStream(url);
             return IO.readStream(maxSize, input);
         } finally {
             try {
@@ -570,9 +520,8 @@ public class IO {
      * @throws UnsupportedEncodingException
      */
     public static String readURLToString(final URL ressourceURL) throws IOException {
-        InputStream fis = null;
+        final InputStream fis = URLStream.openStream(ressourceURL);
         try {
-            fis = URLStream.openStream(ressourceURL);
             return IO.readInputStreamToString(fis);
         } finally {
             try {
@@ -593,38 +542,54 @@ public class IO {
     }
 
     public static void secureWrite(final File file, final byte[] bytes, final SYNC sync) throws IOException {
-        // System.out.println("DO");
-        final File bac = new File(file.getAbsolutePath() + ".bac");
-        if (file.getParentFile().exists() == false) {
-            file.getParentFile().mkdirs();
-        }
-        if (bac.exists() && bac.delete() == false) {
-            throw new IOException("could not remove " + bac);
-        }
-        boolean deleteFile = true;
-        try {
-            IO.writeToFile(bac, bytes, sync);
-            if (file.exists() && file.delete() == false) {
-                throw new IOException("could not remove " + file);
+        secureWrite(file, new WriteToFileCallback() {
+            @Override
+            public void writeTo(OutputStream os) throws IOException {
+                os.write(bytes);
             }
-            long t = System.currentTimeMillis();
-            int i = 0;
-            while (!bac.renameTo(file)) {
-                i++;
+
+            @Override
+            public void onIOException(IOException e) throws IOException {
+            }
+
+            @Override
+            public void onClosed() {
+            }
+        }, sync);
+    }
+
+    public static void secureWrite(final File dstFile, final WriteToFileCallback writeToFileCallback, final SYNC sync) throws IOException {
+        final File tmpFile = new File(dstFile.getAbsolutePath() + ".bac");
+        if (dstFile.getParentFile().exists() == false) {
+            dstFile.getParentFile().mkdirs();
+        }
+        if (tmpFile.exists() && !tmpFile.delete()) {
+            throw new IOException("could not remove tmpFile" + tmpFile);
+        }
+        boolean finallyDeleteFileFlag = true;
+        try {
+            IO.writeToFile(tmpFile, writeToFileCallback, sync);
+            if (dstFile.exists() && dstFile.delete() == false) {
+                throw new IOException("could not remove dstFile" + dstFile);
+            }
+            final long timeStamp = System.currentTimeMillis();
+            int retry = 0;
+            while (!tmpFile.renameTo(dstFile)) {
+                retry++;
                 try {
-                    Thread.sleep(i * 10);
+                    Thread.sleep(retry * 10);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    throw new IOException("Interrupt during write not rename " + bac + " to " + file.exists());
+                    throw new IOException("interrupt during write not rename " + tmpFile + " to " + dstFile.exists(), e);
                 }
-                if (System.currentTimeMillis() - t > 1000) {
-                    throw new IOException("COuld not rename " + bac + " to " + file.exists());
+                if (System.currentTimeMillis() - timeStamp > 1000) {
+                    throw new IOException("could not rename " + tmpFile + " to " + dstFile.exists());
                 }
             }
-            deleteFile = false;
+            finallyDeleteFileFlag = false;
         } finally {
-            if (deleteFile) {
-                bac.delete();
+            if (finallyDeleteFileFlag) {
+                tmpFile.delete();
             }
         }
     }
@@ -645,8 +610,8 @@ public class IO {
      *
      * @param handler
      */
+    @Deprecated
     public static void setErrorHandler(final IOErrorHandler handler) {
-        IO.ERROR_HANDLER = handler;
     }
 
     public static void writeStringToFile(final File file, final String string) throws IOException {
@@ -657,163 +622,156 @@ public class IO {
         IO.writeStringToFile(file, string, append, SYNC.META_AND_DATA);
     }
 
-    public static void writeStringToFile(final File file, final String string, final boolean append, final SYNC sync) throws IOException {
-        try {
-            if (file == null) {
-                throw new IllegalArgumentException("File is null.");
-            }
-            if (file.exists() && !append) {
-                throw new IllegalArgumentException("File already exists: " + file);
-            }
-            if (!file.exists()) {
-                file.createNewFile();
-            }
-            if (!file.isFile()) {
-                throw new IllegalArgumentException("Is not a file: " + file);
-            }
-            if (!file.canWrite()) {
-                throw new IllegalArgumentException("Cannot write to file: " + file);
-            }
-            FileOutputStream fos = null;
-            Writer output = null;
-            boolean deleteFile = true;
-            try {
-                output = new BufferedWriter(new OutputStreamWriter(fos = new FileOutputStream(file, append), "UTF-8"));
-                output.write(string);
-                output.flush();
-                if (sync != null) {
-                    switch (sync) {
-                    case DATA:
-                        fos.getChannel().force(false);
-                        break;
-                    case META_AND_DATA:
-                        fos.getChannel().force(true);
-                        break;
-                    default:
-                        break;
-                    }
-                }
-                deleteFile = false;
-            } finally {
-                try {
-                    output.flush();
-                } catch (final Throwable e) {
-                }
-                try {
-                    output.close();
-                } catch (final Throwable e) {
-                }
-                try {
-                    fos.close();
-                } catch (final Throwable e) {
-                }
-                if (deleteFile) {
-                    file.delete();
-                }
-            }
-        } catch (final IOException e) {
-            if (IO.ERROR_HANDLER != null) {
-                IO.ERROR_HANDLER.onWriteException(e, file, string.getBytes());
-            }
-            throw e;
-        } catch (final RuntimeException e) {
-            if (IO.ERROR_HANDLER != null) {
-                IO.ERROR_HANDLER.onWriteException(e, file, string.getBytes());
-            }
-            throw e;
-        } catch (final Error e) {
-            if (IO.ERROR_HANDLER != null) {
-                IO.ERROR_HANDLER.onWriteException(e, file, string.getBytes());
-            }
-            throw e;
-        }
-    }
-
     public static void writeToFile(final File file, final byte[] data) throws IOException {
         IO.writeToFile(file, data, SYNC.META_AND_DATA);
     }
 
+    public static interface WriteToFileCallback {
+        public void writeTo(final OutputStream os) throws IOException;
+
+        public void onIOException(IOException e) throws IOException;
+
+        public void onClosed();
+    }
+
     public static void writeToFile(final File file, final byte[] data, final SYNC sync) throws IOException {
+        writeToFile(file, new WriteToFileCallback() {
+            @Override
+            public void writeTo(OutputStream os) throws IOException {
+                os.write(data);
+            }
+
+            @Override
+            public void onIOException(IOException e) throws IOException {
+            }
+
+            @Override
+            public void onClosed() {
+            }
+        }, sync);
+    }
+
+    public static void writeStringToFile(final File file, final String string, final boolean append, final SYNC sync) throws IOException {
+        if (file == null) {
+            throw new IllegalArgumentException("File is null.");
+        } else if (file.exists() && !append) {
+            throw new IllegalArgumentException("File already exists: " + file);
+        } else if (!file.exists()) {
+            file.createNewFile();
+        }
+        if (!file.isFile()) {
+            throw new IllegalArgumentException("Is not a file: " + file);
+        } else if (!file.canWrite()) {
+            throw new IllegalArgumentException("Cannot write to file: " + file);
+        }
+        boolean finallyDeleteFileFlag = true;
         try {
-            if (file == null) {
-                throw new IllegalArgumentException("File is null.");
-            }
-            if (file.exists()) {
-                throw new IllegalArgumentException("File already exists: " + file);
-            }
+            final FileOutputStream fileOutputStream = new FileOutputStream(file, append);
             try {
-                file.createNewFile();
-            } catch (IOException e) {
-                throw e;
-            }
-            if (!file.isFile()) {
-                throw new IllegalArgumentException("Is not a file: " + file);
-            }
-            if (!file.canWrite()) {
-                throw new IllegalArgumentException("Cannot write to file: " + file);
-            }
-            FileOutputStream out = null;
-            boolean deleteFile = true;
-            try {
-                out = new FileOutputStream(file);
-                out.write(data);
-                out.flush();
+                final Writer writer = new OutputStreamWriter(fileOutputStream, "UTF-8");
+                writer.write(string);
+                writer.flush();
                 if (sync != null) {
                     switch (sync) {
                     case DATA:
-                        out.getChannel().force(false);
+                        fileOutputStream.getChannel().force(false);
                         break;
                     case META_AND_DATA:
-                        out.getChannel().force(true);
+                        fileOutputStream.getChannel().force(true);
                         break;
+                    case NONE:
                     default:
                         break;
                     }
                 }
-                deleteFile = false;
+                writer.close();
+                finallyDeleteFileFlag = false;
             } finally {
                 try {
-                    out.close();
+                    fileOutputStream.close();
                 } catch (final Throwable e) {
                 }
-                if (deleteFile) {
-                    file.delete();
-                }
             }
-        } catch (final IOException e) {
-            if (IO.ERROR_HANDLER != null) {
-                IO.ERROR_HANDLER.onWriteException(e, file, data);
+        } finally {
+            if (finallyDeleteFileFlag) {
+                file.delete();
             }
-            throw e;
-        } catch (final RuntimeException e) {
-            if (IO.ERROR_HANDLER != null) {
-                IO.ERROR_HANDLER.onWriteException(e, file, data);
-            }
-            throw e;
-        } catch (final Error e) {
-            if (IO.ERROR_HANDLER != null) {
-                IO.ERROR_HANDLER.onWriteException(e, file, data);
-            }
-            throw e;
         }
     }
 
-    /**
-     * @param stdOutStringReader
-     * @return
-     * @throws IOException
-     */
-    public static String readToString(Reader reader) throws IOException {
-        StringBuilder sb = new StringBuilder();
-        char[] buffer = new char[48];
-        for (;;) {
-            int count = reader.read(buffer);
-            if (count > 0) {
-                sb.append(buffer, 0, count);
-            } else if (count < 0) {
-                break;
+    public static void writeToFile(final File file, final WriteToFileCallback writeToFileCallback, final SYNC sync) throws IOException {
+        if (file == null) {
+            throw new IllegalArgumentException("File is null.");
+        } else if (file.exists()) {
+            throw new IllegalArgumentException("File already exists: " + file);
+        } else if (writeToFileCallback == null) {
+            throw new IllegalArgumentException("WriteToFileCallback is null.");
+        }
+        file.createNewFile();
+        if (!file.isFile()) {
+            throw new IllegalArgumentException("Is not a file: " + file);
+        } else if (!file.canWrite()) {
+            throw new IllegalArgumentException("Cannot write to file: " + file);
+        }
+        boolean finallyDeleteFileFlag = true;
+        try {
+            final FileOutputStream fileOutputStream = new FileOutputStream(file);
+            try {
+                writeToFileCallback.writeTo(new OutputStream() {
+                    @Override
+                    public void write(int b) throws IOException {
+                        fileOutputStream.write(b);
+                    }
+
+                    @Override
+                    public void write(byte[] b, int off, int len) throws IOException {
+                        fileOutputStream.write(b, off, len);
+                    }
+
+                    @Override
+                    public void write(byte[] b) throws IOException {
+                        fileOutputStream.write(b);
+                    }
+
+                    @Override
+                    public void flush() throws IOException {
+                        fileOutputStream.flush();
+                    }
+
+                    @Override
+                    public void close() throws IOException {
+                    }
+                });
+                fileOutputStream.flush();
+                if (sync != null) {
+                    switch (sync) {
+                    case DATA:
+                        fileOutputStream.getChannel().force(false);
+                        break;
+                    case META_AND_DATA:
+                        fileOutputStream.getChannel().force(true);
+                        break;
+                    case NONE:
+                    default:
+                        break;
+                    }
+                }
+                fileOutputStream.close();
+                finallyDeleteFileFlag = false;
+            } finally {
+                try {
+                    fileOutputStream.close();
+                } catch (final Throwable e) {
+                }
+                writeToFileCallback.onClosed();
+            }
+        } catch (final IOException e) {
+            writeToFileCallback.onIOException(e);
+            throw e;
+        } finally {
+            if (finallyDeleteFileFlag) {
+                file.delete();
             }
         }
-        return sb.toString();
     }
 }

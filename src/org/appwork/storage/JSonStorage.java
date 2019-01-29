@@ -37,6 +37,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.Method;
@@ -55,10 +56,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
-import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.CipherOutputStream;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -70,6 +70,7 @@ import org.appwork.shutdown.ShutdownRequest;
 import org.appwork.utils.Application;
 import org.appwork.utils.IO;
 import org.appwork.utils.IO.SYNC;
+import org.appwork.utils.IO.WriteToFileCallback;
 import org.appwork.utils.StringUtils;
 import org.appwork.utils.reflection.Clazz;
 
@@ -450,12 +451,12 @@ public class JSonStorage {
         return new CipherInputStream(inputStream, cipher);
     }
 
-    public static byte[] encryptByteArray(final byte[] data, final byte[] key, final byte[] iv) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException {
-        final Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+    public static CipherOutputStream createCipherOutputStream(final OutputStream outputStream, final byte[] key, final byte[] iv) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, InvalidAlgorithmParameterException {
         final IvParameterSpec ivSpec = new IvParameterSpec(iv);
         final SecretKeySpec skeySpec = new SecretKeySpec(key, "AES");
+        final Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
         cipher.init(Cipher.ENCRYPT_MODE, skeySpec, ivSpec);
-        return cipher.doFinal(data);
+        return new CipherOutputStream(outputStream, cipher);
     }
 
     @Deprecated
@@ -561,15 +562,38 @@ public class JSonStorage {
      * @deprecated use IO.secureWrite instead
      *
      */
-    public static void saveTo(final File file, final boolean plain, final byte[] key, byte[] data) throws StorageException {
+    public static void saveTo(final File file, final boolean plain, final byte[] key, final byte[] data) throws StorageException {
         final Object lock = JSonStorage.requestLock(file);
         synchronized (lock) {
             try {
                 file.getParentFile().mkdirs();
-                if (!plain) {
-                    data = encryptByteArray(data, key, key);
-                }
-                IO.secureWrite(file, data, SYNC.NONE);
+                final IO.WriteToFileCallback writeToFileCallback = new WriteToFileCallback() {
+                    @Override
+                    public void writeTo(OutputStream os) throws IOException {
+                        if (plain) {
+                            os.write(data);
+                        } else {
+                            try {
+                                final CipherOutputStream cos = createCipherOutputStream(os, key, key);
+                                cos.write(data);
+                                cos.close();
+                            } catch (IOException e) {
+                                throw e;
+                            } catch (Exception e) {
+                                throw new IOException(e);
+                            }
+                        }
+                    }
+
+                    @Override
+                    public void onIOException(IOException e) throws IOException {
+                    }
+
+                    @Override
+                    public void onClosed() {
+                    }
+                };
+                IO.secureWrite(file, writeToFileCallback, SYNC.NONE);
             } catch (final Exception e) {
                 throw new StorageException("Can not write to " + file.getAbsolutePath(), e);
             } finally {
