@@ -61,7 +61,12 @@ public class Files17 {
                 while (existingFile != null) {
                     if (existingFile.exists()) {
                         try {
-                            fileFileStore = Files.getFileStore(existingFile.toPath());
+                            final long startTimeStamp2 = System.currentTimeMillis();
+                            try {
+                                fileFileStore = Files.getFileStore(existingFile.toPath());
+                            } finally {
+                                LogV3.logger(Files17.class).info("guessRoot:" + file + "|getFileStore:" + existingFile + "|duration:" + (System.currentTimeMillis() - startTimeStamp2));
+                            }
                             break;
                         } catch (InvalidPathException e) {
                             // wrong locale, java.nio.file.InvalidPathException: Malformed input or input contains unmappable characters
@@ -84,10 +89,22 @@ public class Files17 {
                             }
                         }
                     }
-                    existingFile = existingFile.getParentFile();
+                    final long startTimeStamp2 = System.currentTimeMillis();
+                    try {
+                        existingFile = existingFile.getParentFile();
+                    } finally {
+                        LogV3.logger(Files17.class).info("guessRoot:" + file + "|getParentFile:" + existingFile + "|duration:" + (System.currentTimeMillis() - startTimeStamp2));
+                    }
                 }
                 if (fileFileStore != null) {
-                    for (final FileStore fileStore : FileSystems.getDefault().getFileStores()) {
+                    final long startTimeStamp2 = System.currentTimeMillis();
+                    final Iterable<FileStore> fileStores;
+                    try {
+                        fileStores = FileSystems.getDefault().getFileStores();
+                    } finally {
+                        LogV3.logger(Files17.class).info("guessRoot:" + file + "|getFileStores|duration:" + (System.currentTimeMillis() - startTimeStamp2));
+                    }
+                    for (final FileStore fileStore : fileStores) {
                         if (fileStore.equals(fileFileStore)) {
                             final Path fileStorePath = getPath(fileStore);
                             if (fileStorePath != null) {
