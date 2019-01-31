@@ -135,17 +135,16 @@ public class IO {
                 }
             }
             if (sync != null) {
-                if (sync != null) {
-                    switch (sync) {
-                    case DATA:
-                        outChannel.force(false);
-                        break;
-                    case META_AND_DATA:
-                        outChannel.force(true);
-                        break;
-                    default:
-                        break;
-                    }
+                switch (sync) {
+                case DATA:
+                    outChannel.force(false);
+                    break;
+                case META_AND_DATA:
+                    outChannel.force(true);
+                    break;
+                case NONE:
+                default:
+                    break;
                 }
             }
         } catch (final IOException e) {
