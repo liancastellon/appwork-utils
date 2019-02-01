@@ -519,11 +519,11 @@ public class YEncInputStream extends InputStream {
         pcrc32Value = getValue(getYEncTrailer(), "pcrc32", CRC32);
         crc32Value = getValue(getYEncTrailer(), " crc32", CRC32);// space is important to differ between pcrc32 and crc32
         // read body to end to drain inputstream
-        IOException throwLater = null;
+        IOException bodyEndException = null;
         try {
             readBodyEnd(inputStream);
         } catch (IOException e) {
-            throwLater = e;
+            bodyEndException = e;
         }
         try {
             // error checks
@@ -547,10 +547,10 @@ public class YEncInputStream extends InputStream {
                 throw new YEncDecodedSizeException(decodedBytes, size);
             }
         } catch (IOException e) {
-            throw Exceptions.addSuppressed(e, throwLater);
+            throw Exceptions.addSuppressed(e, bodyEndException);
         }
-        if (throwLater != null) {
-            throw throwLater;
+        if (bodyEndException != null) {
+            throw bodyEndException;
         }
     }
 
