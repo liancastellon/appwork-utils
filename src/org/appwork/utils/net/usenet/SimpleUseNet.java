@@ -161,12 +161,14 @@ public abstract class SimpleUseNet {
         try {
             if (!ssl) {
                 socket = createSocket();
-                socket.connect(socketAddress);
+                socket.setSoTimeout(getReadTimeout());
+                socket.connect(socketAddress, getConnectTimeout());
             } else {
                 boolean useSNIWorkaround = useSNIWorkaround();
                 while (true) {
                     socket = createSocket();
-                    socket.connect(socketAddress);
+                    socket.setSoTimeout(getReadTimeout());
+                    socket.connect(socketAddress, getConnectTimeout());
                     try {
                         final SSLSocketFactory sslSocketFactory = getSSLSocketFactory();
                         final SSLSocket sslSocket;
@@ -258,11 +260,11 @@ public abstract class SimpleUseNet {
     }
 
     private final ByteArrayOutputStream lineBuffer = new ByteArrayOutputStream() {
-        @Override
-        public synchronized byte[] toByteArray() {
-            return buf;
-        };
-    };
+                                                       @Override
+                                                       public synchronized byte[] toByteArray() {
+                                                           return buf;
+                                                       };
+                                                   };
 
     protected synchronized String readLine() throws IOException {
         return readLine(lineBuffer);
@@ -429,6 +431,14 @@ public abstract class SimpleUseNet {
             silentDisconnect(e);
             throw e;
         }
+    }
+
+    public int getReadTimeout() {
+        return 30 * 1000;
+    }
+
+    public int getConnectTimeout() {
+        return 60 * 1000;
     }
 
     public CommandResponse sendCmd(COMMAND command) throws IOException {
