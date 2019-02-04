@@ -148,6 +148,13 @@ public class URLEncode {
             for (int i = 0; i < input.length(); i++) {
                 final char ch = input.charAt(i);
                 if (ch == ' ') {
+                    if (encode.length() > 0) {
+                        try {
+                            sb.append(URLEncoder.encode(encode.toString(), "UTF-8"));
+                        } catch (UnsupportedEncodingException ignore) {
+                        }
+                        encode.delete(0, encode.length());
+                    }
                     sb.append("%20");
                 } else if (URLEncode.RFC2396CHARS.indexOf(ch) != -1) {
                     if (encode.length() > 0) {
