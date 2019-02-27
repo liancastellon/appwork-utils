@@ -42,16 +42,16 @@ import org.appwork.utils.JVMVersion;
  */
 public class JVMTest {
     public static void main(String[] args) {
-        System.out.println(JVMVersion.parseJavaVersionString("1.8.0_112-b16"));
-        System.out.println(JVMVersion.parseJavaVersionString("1.7.0_72-b14"));
-        System.out.println(JVMVersion.parseJavaVersionString("1.5.1_144"));
-        System.out.println(JVMVersion.parseJavaVersionString("1.8.1_144"));
-        System.out.println(JVMVersion.parseJavaVersionString("9"));
-        System.out.println(JVMVersion.parseJavaVersionString("9.0.1+11"));
-        System.out.println(JVMVersion.parseJavaVersionString("9.0.1+11-LTS"));
-        System.out.println(JVMVersion.parseJavaVersionString("9.0.1+11  - LTS"));
-        System.out.println(JVMVersion.parseJavaVersionString("10.0.1+13  - LTS"));
-        System.out.println(JVMVersion.parseJavaVersionString("10-ea+42"));
-        System.out.println(JVMVersion.parseJavaVersionString("12+33"));
+        System.out.println(JVMVersion.parseJavaVersionString("1.8.0_112-b16") == 18112016l);
+        System.out.println(JVMVersion.parseJavaVersionString("1.7.0_72-b14") == 17072014);
+        System.out.println(JVMVersion.parseJavaVersionString("1.5.1_144") == 15144000);
+        System.out.println(JVMVersion.parseJavaVersionString("1.8.1_144") == 18144000);
+        System.out.println(JVMVersion.parseJavaVersionString("9") == 9000000000000l);
+        System.out.println(JVMVersion.parseJavaVersionString("9.0.1+11") == 9000001000011l);
+        System.out.println(JVMVersion.parseJavaVersionString("9.0.1+11-LTS") == 9000001000011l);
+        System.out.println(JVMVersion.parseJavaVersionString("9.0.1+11  - LTS") == 9000001000011l);
+        System.out.println(JVMVersion.parseJavaVersionString("10.0.1+13  - LTS") == 10000001000013l);
+        System.out.println(JVMVersion.parseJavaVersionString("10-ea+42") == 10000000000042l);
+        System.out.println(JVMVersion.parseJavaVersionString("12+33") == 12000000000033l);
     }
 }
