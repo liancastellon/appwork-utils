@@ -84,7 +84,12 @@ public abstract class TypeRef<T> {
                                                                               };
                                                                           };
     public static final TypeRef<HashSet<String>>          STRING_HASHSET  = new TypeRef<HashSet<String>>() {
-                                                                          };;
+                                                                          };
+    public static final TypeRef<long[]>                   LONG_ARRAY      = new TypeRef<long[]>() {
+                                                                              public Type getType() {
+                                                                                  return long[].class;
+                                                                              };
+                                                                          };
     private final Type                                    type;
 
     public TypeRef() {
