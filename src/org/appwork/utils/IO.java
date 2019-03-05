@@ -47,6 +47,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.RandomAccessFile;
+import java.io.Reader;
 import java.io.UnsupportedEncodingException;
 import java.io.Writer;
 import java.net.URL;
@@ -376,13 +377,16 @@ public class IO {
     }
 
     public static String readInputStreamToString(final InputStream fis) throws UnsupportedEncodingException, IOException {
-        BufferedReader f = null;
+        return readToString(new BufferedReader(new InputStreamReader(fis, "UTF-8")));
+    }
+
+    public static String readToString(final Reader f) throws UnsupportedEncodingException, IOException {
         try {
-            f = new BufferedReader(new InputStreamReader(fis, "UTF-8"));
+            BufferedReader bf = f instanceof BufferedReader ? (BufferedReader) f : new BufferedReader(f);
             String line;
             final StringBuilder ret = new StringBuilder();
             final String sep = System.getProperty("line.separator");
-            while ((line = f.readLine()) != null) {
+            while ((line = bf.readLine()) != null) {
                 if (ret.length() > 0) {
                     ret.append(sep);
                 } else if (line.startsWith("\uFEFF")) {
