@@ -124,7 +124,8 @@ public class CrossSystem {
         WINDOWS_8_1(OSFamily.WINDOWS),
         WINDOWS_SERVER_2012_R2(OSFamily.WINDOWS),
         WINDOWS_10(OSFamily.WINDOWS),
-        WINDOWS_SERVER_2016(OSFamily.WINDOWS);
+        WINDOWS_SERVER_2016(OSFamily.WINDOWS),
+        WINDOWS_SERVER_2019(OSFamily.WINDOWS);
         private final OSFamily family;
 
         private OperatingSystem(final OSFamily family) {
@@ -491,7 +492,7 @@ public class CrossSystem {
         }
         /*
          * remove ending dots, not allowed under windows and others os maybe too
-         * 
+         *
          * Do not end a file or directory name with a space or a period.
          */
         pathPart = pathPart.replaceFirst("\\.+$", "");
@@ -689,6 +690,8 @@ public class CrossSystem {
                 }
             } else if (os.contains("windows server 2016")) {
                 return OperatingSystem.WINDOWS_SERVER_2016;
+            } else if (os.contains("windows server 2019")) {
+                return OperatingSystem.WINDOWS_SERVER_2019;
             } else if (os.contains("nt")) {
                 return OperatingSystem.WINDOWS_NT;
             } else if (os.contains("windows")) {
