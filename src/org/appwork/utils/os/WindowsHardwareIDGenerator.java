@@ -214,7 +214,7 @@ public class WindowsHardwareIDGenerator {
     private void appendPnPentity() throws IOException, InterruptedException {
         // https://www.keysight.com/main/editorial.jspx?ckey=2039700&id=2039700&nid=-11143.0.00&lc=ger&cc=DE
         CSVContent result = this.wmic("path", "Win32_PnPEntity", "get", "*");
-        String[] fields = new String[] { "Service", "PNPDeviceID", "DeviceID" };
+        String[] fields = new String[] { "Service", "PNPDeviceID", "DeviceID", "Caption", "Manufacturer" };
         result.sort(fields);
         // System.out.println(result);
         int index = 0;
@@ -227,7 +227,7 @@ public class WindowsHardwareIDGenerator {
                 continue;
             }
             for (String s : fields) {
-                this.add("PCI Entity", result, s, i, index);
+                this.add("Devices", result, s, i, index);
             }
             index++;
             // probably given by the os
