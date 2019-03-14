@@ -62,7 +62,19 @@ public class ModifyLock {
         }
     }
 
-    public void readUnlock(final boolean state) throws IllegalMonitorStateException {
+    public final boolean tryWriteLock() {
+        return lock.writeLock().tryLock();
+    }
+
+    public final boolean isWriteLocked() {
+        return lock.isWriteLocked();
+    }
+
+    public final boolean isReadLocked() {
+        return lock.getReadLockCount() > 0;
+    }
+
+    public final void readUnlock(final boolean state) throws IllegalMonitorStateException {
         if (state == false) {
             return;
         } else {
@@ -92,7 +104,7 @@ public class ModifyLock {
         this.lock.writeLock().lock();
     }
 
-    public void writeUnlock() throws IllegalMonitorStateException {
+    public final void writeUnlock() throws IllegalMonitorStateException {
         this.lock.writeLock().unlock();
     }
 }
