@@ -60,17 +60,12 @@ import org.appwork.exceptions.WTFException;
 import org.appwork.shutdown.ShutdownController;
 import org.appwork.shutdown.ShutdownEvent;
 import org.appwork.shutdown.ShutdownRequest;
-import org.appwork.uio.InputDialogInterface;
-import org.appwork.uio.UIOManager;
 import org.appwork.utils.Application;
 import org.appwork.utils.Regex;
 import org.appwork.utils.StringUtils;
-import org.appwork.utils.locale._AWU;
 import org.appwork.utils.os.mime.Mime;
 import org.appwork.utils.os.mime.MimeFactory;
 import org.appwork.utils.processes.ProcessBuilderFactory;
-import org.appwork.utils.swing.dialog.Dialog;
-import org.appwork.utils.swing.dialog.InputDialog;
 
 /**
  * This class provides a few native features.
@@ -1289,34 +1284,18 @@ public class CrossSystem {
      *
      * @param url
      */
-    public static void openURL(final String url) {
+    public static Throwable openURL(final String url) {
         try {
             CrossSystem.openUrlOrThrowException(url);
+            return null;
         } catch (final Throwable e) {
             org.appwork.loggingv3.LogV3.log(e);
+            return e;
         }
     }
 
     public static void openURL(final URL url) {
         CrossSystem.openURL(url.toString());
-    }
-
-    /**
-     * @param update_dialog_news_button_url
-     */
-    public static void openURLOrShowMessage(final String urlString) {
-        try {
-            CrossSystem.openUrlOrThrowException(urlString);
-        } catch (final Throwable e) {
-            org.appwork.loggingv3.LogV3.log(e);
-            try {
-                final String question = _AWU.T.crossSystem_open_url_failed_msg();
-                final InputDialog dialog = new InputDialog(UIOManager.LOGIC_COUNTDOWN | UIOManager.BUTTONS_HIDE_CANCEL, _AWU.T.DIALOG_INPUT_TITLE(), question, urlString, Dialog.getIconByText(question), null, null);
-                dialog.setTimeout(61 * 1000);
-                UIOManager.I().show(InputDialogInterface.class, dialog);
-            } catch (final Throwable donothing) {
-            }
-        }
     }
 
     /**
