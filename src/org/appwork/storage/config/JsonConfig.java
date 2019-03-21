@@ -39,23 +39,20 @@ import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.appwork.exceptions.WTFException;
+import org.appwork.loggingv3.LogV3;
 import org.appwork.storage.config.annotations.CustomStorageName;
 import org.appwork.storage.config.annotations.StorageHandlerFactoryAnnotation;
 import org.appwork.storage.config.handler.StorageHandler;
 import org.appwork.utils.Application;
-import org.appwork.utils.swing.dialog.Dialog;
 
 /**
  * @author thomas
  *
  */
 public class JsonConfig {
-
     private static class LockObject {
         private final String        id;
-
         private final AtomicInteger lock           = new AtomicInteger(0);
-
         private StorageHandler      storageHandler = null;
 
         private LockObject(final String id) {
@@ -77,11 +74,9 @@ public class JsonConfig {
         public void setStorageHandler(final StorageHandler storageHandler) {
             this.storageHandler = storageHandler;
         }
-
     }
 
     private static final HashMap<String, ConfigInterface> CACHE = new HashMap<String, ConfigInterface>();
-
     private static final HashMap<String, LockObject>      LOCKS = new HashMap<String, LockObject>();
 
     public static <T extends ConfigInterface> String getStorageName(Class<T> configInterface) {
@@ -100,9 +95,7 @@ public class JsonConfig {
      */
     @SuppressWarnings("unchecked")
     public static <T extends ConfigInterface> T create(final Class<T> configInterface) {
-
         String path = getStorageName(configInterface);
-
         synchronized (JsonConfig.CACHE) {
             final ConfigInterface ret = JsonConfig.CACHE.get(path);
             if (ret != null) {
@@ -120,7 +113,6 @@ public class JsonConfig {
                 }
                 final ClassLoader cl = configInterface.getClassLoader();
                 if (lock.getStorageHandler() == null) {
-
                     StorageHandlerFactoryAnnotation factoryClass = configInterface.getAnnotation(StorageHandlerFactoryAnnotation.class);
                     File f = Application.getResource("cfg/" + path);
                     if (factoryClass != null) {
@@ -128,7 +120,6 @@ public class JsonConfig {
                     } else {
                         lock.setStorageHandler(new StorageHandler<T>(f, configInterface));
                     }
-
                 }
                 final T ret = (T) Proxy.newProxyInstance(cl, new Class<?>[] { configInterface }, lock.getStorageHandler());
                 synchronized (JsonConfig.CACHE) {
@@ -138,14 +129,7 @@ public class JsonConfig {
                 }
                 return ret;
             } catch (final Throwable e) {
-                e.printStackTrace();
-                if (!Application.isJared(JsonConfig.class)) {
-                    new Thread() {
-                        public void run() {
-                            Dialog.getInstance().showExceptionDialog(e.getClass().getSimpleName(), e.getMessage(), e);
-                        };
-                    }.start();
-                }
+                LogV3.defaultLogger().log(e);
                 if (e instanceof RuntimeException) {
                     throw (RuntimeException) e;
                 }
@@ -158,9 +142,7 @@ public class JsonConfig {
 
     @SuppressWarnings("unchecked")
     public static <T extends ConfigInterface> T create(final File path, final Class<T> configInterface) {
-
         String id = path.getAbsolutePath() + getStorageName(configInterface);
-
         synchronized (JsonConfig.CACHE) {
             final ConfigInterface ret = JsonConfig.CACHE.get(id);
             if (ret != null) {
@@ -178,7 +160,6 @@ public class JsonConfig {
                 }
                 final ClassLoader cl = configInterface.getClassLoader();
                 if (lock.getStorageHandler() == null) {
-
                     StorageHandlerFactoryAnnotation factoryClass = configInterface.getAnnotation(StorageHandlerFactoryAnnotation.class);
                     if (factoryClass != null) {
                         lock.setStorageHandler(((StorageHandlerFactory<T>) factoryClass.value().newInstance()).create(path, configInterface));
@@ -194,14 +175,7 @@ public class JsonConfig {
                 }
                 return ret;
             } catch (final Throwable e) {
-                e.printStackTrace();
-                if (!Application.isJared(JsonConfig.class)) {
-                    new Thread() {
-                        public void run() {
-                            Dialog.getInstance().showExceptionDialog(e.getClass().getSimpleName(), e.getMessage(), e);
-                        };
-                    }.start();
-                }
+                LogV3.defaultLogger().log(e);
                 if (e instanceof RuntimeException) {
                     throw (RuntimeException) e;
                 }
@@ -232,7 +206,6 @@ public class JsonConfig {
                 }
                 final ClassLoader cl = configInterface.getClassLoader();
                 if (lock.getStorageHandler() == null) {
-
                     StorageHandlerFactoryAnnotation factoryClass = configInterface.getAnnotation(StorageHandlerFactoryAnnotation.class);
                     if (factoryClass != null) {
                         lock.setStorageHandler(((StorageHandlerFactory<T>) factoryClass.value().newInstance()).create(urlPath, configInterface));
@@ -248,14 +221,7 @@ public class JsonConfig {
                 }
                 return ret;
             } catch (final Throwable e) {
-                e.printStackTrace();
-                if (!Application.isJared(JsonConfig.class)) {
-                    new Thread() {
-                        public void run() {
-                            Dialog.getInstance().showExceptionDialog(e.getClass().getSimpleName(), e.getMessage(), e);
-                        };
-                    }.start();
-                }
+                LogV3.defaultLogger().log(e);
                 if (e instanceof RuntimeException) {
                     throw (RuntimeException) e;
                 }
@@ -288,5 +254,4 @@ public class JsonConfig {
             }
         }
     }
-
 }
