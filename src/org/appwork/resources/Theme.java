@@ -47,14 +47,11 @@ import org.appwork.storage.config.MinTimeWeakReference;
 import org.appwork.storage.config.MinTimeWeakReferenceCleanup;
 import org.appwork.swing.components.CheckBoxIcon;
 import org.appwork.utils.Application;
-import org.appwork.utils.Exceptions;
 import org.appwork.utils.IO;
 import org.appwork.utils.StringUtils;
 import org.appwork.utils.ImageProvider.ImageProvider;
 import org.appwork.utils.images.IconIO;
 import org.appwork.utils.images.Interpolation;
-import org.appwork.utils.locale._AWU;
-import org.appwork.utils.swing.dialog.Dialog;
 
 /**
  *
@@ -234,47 +231,47 @@ public class Theme implements MinTimeWeakReferenceCleanup {
         return url;
     }
 
-    /**
-     * @param relativePath
-     */
-    private void resourcesHelper(String relativePath) {
-        try {
-            URL self = getClass().getResource("/");
-            File file = new File(self.toURI());
-            File res = new File(file.getParentFile().getParent(), "Resources");
-            if (!res.exists()) {
-                return;
-            }
-            File helperRoot = new File(file.getParentFile(), "themes/");
-            if (RESOURCE_HELPER_ROOT != null) {
-                helperRoot = RESOURCE_HELPER_ROOT;
-            }
-            File to = new File(helperRoot, relativePath);
-            // String[] pathes = relativePath.split("[\\/\\\\]+");
-            while (true) {
-                File check = new File(res, relativePath);
-                if (check.exists()) {
-                    if (!to.exists()) {
-                        Dialog.I().showConfirmDialog(0, "Found Missing Resource", "The Project " + file.getParentFile().getName() + " requires the resource " + relativePath + ".\r\nCopy " + check + " to " + to, null, _AWU.T.lit_yes(), null);
-                        copy(check, to);
-                        break;
-                    }
-                }
-                int in = relativePath.indexOf("\\");
-                int in2 = relativePath.indexOf("/");
-                if (in < 0 || in2 < in) {
-                    in = in2;
-                }
-                if (in < 0) {
-                    break;
-                }
-                relativePath = relativePath.substring(in + 1);
-            }
-        } catch (Throwable e) {
-            org.appwork.loggingv3.LogV3.severe(Exceptions.getStackTrace(e));
-        }
-    }
-
+    // /**
+    // * @param relativePath
+    // */
+    // private void resourcesHelper(String relativePath) {
+    // try {
+    // URL self = getClass().getResource("/");
+    // File file = new File(self.toURI());
+    // File res = new File(file.getParentFile().getParent(), "Resources");
+    // if (!res.exists()) {
+    // return;
+    // }
+    // File helperRoot = new File(file.getParentFile(), "themes/");
+    // if (RESOURCE_HELPER_ROOT != null) {
+    // helperRoot = RESOURCE_HELPER_ROOT;
+    // }
+    // File to = new File(helperRoot, relativePath);
+    // // String[] pathes = relativePath.split("[\\/\\\\]+");
+    // while (true) {
+    // File check = new File(res, relativePath);
+    // if (check.exists()) {
+    // if (!to.exists()) {
+    // Dialog.I().showConfirmDialog(0, "Found Missing Resource", "The Project " + file.getParentFile().getName() + " requires the resource "
+    // + relativePath + ".\r\nCopy " + check + " to " + to, null, _AWU.T.lit_yes(), null);
+    // copy(check, to);
+    // break;
+    // }
+    // }
+    // int in = relativePath.indexOf("\\");
+    // int in2 = relativePath.indexOf("/");
+    // if (in < 0 || in2 < in) {
+    // in = in2;
+    // }
+    // if (in < 0) {
+    // break;
+    // }
+    // relativePath = relativePath.substring(in + 1);
+    // }
+    // } catch (Throwable e) {
+    // org.appwork.loggingv3.LogV3.severe(Exceptions.getStackTrace(e));
+    // }
+    // }
     /**
      * @param check
      * @param to
@@ -448,7 +445,7 @@ public class Theme implements MinTimeWeakReferenceCleanup {
 
     /*
      * (non-Javadoc)
-     *
+     * 
      * @see org.appwork.storage.config.MinTimeWeakReferenceCleanup# onMinTimeWeakReferenceCleanup
      * (org.appwork.storage.config.MinTimeWeakReference)
      */
