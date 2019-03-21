@@ -79,7 +79,6 @@ import org.appwork.utils.ReflectionUtils;
 import org.appwork.utils.StringUtils;
 import org.appwork.utils.logging2.LogInterface;
 import org.appwork.utils.reflection.Clazz;
-import org.appwork.utils.swing.dialog.Dialog;
 
 /**
  * @author thomas
@@ -587,15 +586,7 @@ public class StorageHandler<T extends ConfigInterface> implements InvocationHand
      * @param e
      */
     protected void error(final Throwable e) {
-        new Thread("ERROR THROWER") {
-            @Override
-            public void run() {
-                Dialog.getInstance().showExceptionDialog(e.getClass().getSimpleName(), e.getMessage(), e);
-            }
-        }.start();
-        // we could throw the exception here, but this would kill the whole
-        // interface. So we just show a a dialog for the developer and let the
-        // rest of the interface work.
+        LogV3.defaultLogger().log(e);
     }
 
     protected void fireEvent(final ConfigEvent.Types type, final KeyHandler<?> keyHandler, final Object parameter) {
