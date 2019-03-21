@@ -41,7 +41,6 @@ import java.util.Locale;
 
 import org.appwork.loggingv3.LogV3;
 import org.appwork.utils.IO;
-import org.appwork.utils.event.Eventsender;
 import org.appwork.utils.logging2.LogInterface;
 import org.appwork.utils.parser.ShellParser;
 
@@ -55,24 +54,14 @@ public class ParameterParser {
     /**
      * Stores the Applications startParameters
      */
-    private String[]                                                rawArguments;
-    /**
-     * The eventsenderobjekt is used to add Listenersupport to this class.
-     */
-    private final Eventsender<CommandSwitchListener, CommandSwitch> eventSender;
-    private HashMap<String, CommandSwitch>                          map;
-    private LogInterface                                            logger;
-    private ArrayList<CommandSwitch>                                list;
+    private String[]                       rawArguments;
+    private HashMap<String, CommandSwitch> map;
+    private LogInterface                   logger;
+    private ArrayList<CommandSwitch>       list;
 
     public ParameterParser(final String[] args) {
         logger = LogV3.I().getLogger(getClass().getSimpleName());
         rawArguments = args;
-        eventSender = new Eventsender<CommandSwitchListener, CommandSwitch>() {
-            @Override
-            protected void fireEvent(final CommandSwitchListener listener, final CommandSwitch event) {
-                listener.executeCommandSwitch(event);
-            }
-        };
     }
 
     /**
@@ -81,14 +70,6 @@ public class ParameterParser {
      */
     public CommandSwitch getCommandSwitch(final String string) {
         return map.get(string);
-    }
-
-    /**
-     * @return the {@link ParameterParser#eventSender}
-     * @see ParameterParser#eventSender
-     */
-    public Eventsender<CommandSwitchListener, CommandSwitch> getEventSender() {
-        return eventSender;
     }
 
     /**
@@ -152,7 +133,7 @@ public class ParameterParser {
                     if (switchCommand != null) {
                         switchCommand = switchCommand.toLowerCase(Locale.ENGLISH);
                     }
-                    getEventSender().fireEvent(cs = new CommandSwitch(switchCommand, params.toArray(new String[] {})));
+                    cs = new CommandSwitch(switchCommand, params.toArray(new String[] {}));
                     map.put(switchCommand, cs);
                     list.add(cs);
                 }
@@ -167,7 +148,7 @@ public class ParameterParser {
             if (switchCommand != null) {
                 switchCommand = switchCommand.toLowerCase(Locale.ENGLISH);
             }
-            getEventSender().fireEvent(cs = new CommandSwitch(switchCommand, params.toArray(new String[] {})));
+            cs = new CommandSwitch(switchCommand, params.toArray(new String[] {}));
             map.put(switchCommand, cs);
             list.add(cs);
         }
@@ -179,5 +160,16 @@ public class ParameterParser {
 
     public void setList(ArrayList<CommandSwitch> list) {
         this.list = list;
+    }
+
+    /**
+     * @param string
+     * @param i
+     * @param j
+     * @return
+     */
+    public boolean hasCommandSwitch(String string, int minParameters, int maxParameters) {
+        CommandSwitch s = getCommandSwitch(string);
+        return s != null && s.getParameters().length >= minParameters && s.getParameters().length <= maxParameters;
     }
 }
