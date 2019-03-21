@@ -43,7 +43,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -70,11 +69,6 @@ import org.appwork.utils.net.httpconnection.HTTPConnectionFactory;
 import org.appwork.utils.net.httpconnection.HTTPProxy;
 
 public class BasicHTTP implements Interruptible {
-    public static void main(final String[] args) throws MalformedURLException, IOException, InterruptedException {
-        final BasicHTTP client = new BasicHTTP();
-        System.out.println(client.getPage(new URL("http://ipcheck0.jdownloader.org")));
-    }
-
     private HashSet<Integer>              allowedResponseCodes;
     private final HashMap<String, String> requestHeader;
     protected volatile HTTPConnection     connection;
@@ -258,12 +252,11 @@ public class BasicHTTP implements Interruptible {
                         /* no contentLength is known */
                     }
                     final byte[] b = new byte[512 * 1024];
-                    int len = 0;
-                    long loaded = Math.max(0, resumePosition);
                     if (progress != null) {
-                        progress.setLoaded(loaded);
+                        progress.setLoaded(Math.max(0, resumePosition));
                     }
                     while (true) {
+                        final int len;
                         try {
                             if ((len = input.read(b)) == -1) {
                                 break;
@@ -283,8 +276,7 @@ public class BasicHTTP implements Interruptible {
                             } catch (IOException e) {
                                 throw new WriteIOException(e);
                             }
-                            loaded = ((CountingConnection) input).transferedBytes();
-                            if (maxSize > 0 && loaded > maxSize) {
+                            if (maxSize > 0 && ((CountingConnection) input).transferedBytes() > maxSize) {
                                 throw new BadResponseLengthException(connection, maxSize);
                             }
                             if (progress != null) {
@@ -293,8 +285,9 @@ public class BasicHTTP implements Interruptible {
                         }
                     }
                     if (this.connection.getCompleteContentLength() >= 0) {
-                        if (loaded != this.connection.getCompleteContentLength()) {
-                            throw new IncompleteResponseException(connection, loaded);
+                        final long completeLength = Math.max(0, resumePosition) + ((CountingConnection) input).transferedBytes();
+                        if (completeLength != this.connection.getCompleteContentLength()) {
+                            throw new IncompleteResponseException(connection, completeLength);
                         }
                     }
                 } catch (final ReadIOException e) {
@@ -753,7 +746,6 @@ public class BasicHTTP implements Interruptible {
                     this.connection.finalizeConnect();
                     this.checkResponseCode();
                     final byte[] b = new byte[32767];
-                    long loaded = 0;
                     InputStream input = this.connection.getInputStream();
                     if (!(input instanceof CountingConnection)) {
                         input = new CountingInputStream(input);
@@ -776,13 +768,13 @@ public class BasicHTTP implements Interruptible {
                             } catch (final IOException e) {
                                 throw new WriteIOException(e);
                             }
-                            loaded = ((CountingConnection) input).transferedBytes();
                             if (downloadProgress != null) {
                                 downloadProgress.increaseLoaded(len);
                             }
                         }
                     }
                     if (this.connection.getCompleteContentLength() >= 0) {
+                        final long loaded = ((CountingConnection) input).transferedBytes();
                         if (loaded != this.connection.getCompleteContentLength()) {
                             throw new IncompleteResponseException(connection, loaded);
                         }
