@@ -33,8 +33,6 @@
  * ==================================================================================================================================================== */
 package org.appwork.app.launcher.parameterparser;
 
-import org.appwork.utils.event.DefaultEvent;
-
 /**
  * This event contains information about a startup parameter kombination like -switch p1 p2 ...
  *
@@ -42,12 +40,11 @@ import org.appwork.utils.event.DefaultEvent;
  *
  *
  */
-public class CommandSwitch extends DefaultEvent {
+public class CommandSwitch {
     /**
      * the parameters that follow the {@link #switchCommand} without leading -
      */
     private final String[] parameters;
-
     /**
      * command. given at startup with --command or -command
      */
@@ -58,7 +55,6 @@ public class CommandSwitch extends DefaultEvent {
      * @param array
      */
     public CommandSwitch(final String switchCommand, final String[] array) {
-        super(null);
         this.switchCommand = switchCommand;
         parameters = array;
     }
@@ -73,7 +69,6 @@ public class CommandSwitch extends DefaultEvent {
         StringBuilder sb = new StringBuilder();
         sb.append("-");
         sb.append(switchCommand);
-
         for (String p : parameters) {
             if (sb.length() > 0) {
                 sb.append(" ");
@@ -113,5 +108,4 @@ public class CommandSwitch extends DefaultEvent {
         }
         return false;
     }
-
 }

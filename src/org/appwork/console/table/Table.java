@@ -6,9 +6,14 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 
+import org.appwork.utils.Regex;
 import org.appwork.utils.StringUtils;
 
 public class Table<Data> {
+    /**
+     *
+     */
+    private static final String           PIPE    = "|";
     ArrayList<Column<Data>>               columns = new ArrayList<Column<Data>>();
     private List<Data>                    rows;
     private String[]                      sortIds;
@@ -62,9 +67,9 @@ public class Table<Data> {
             Column<Data> c = this.columns.get(i);
             if (c.visible) {
                 if (i > 0) {
-                    sb.append(" │ ");
+                    sb.append(" " + PIPE + " ");
                 } else {
-                    sb.append("│ ");
+                    sb.append("" + PIPE + " ");
                 }
                 if (this.sortIds != null && this.sortIds.length > 0 && this.sortIds[0].equals(c.header)) {
                     sb.append(StringUtils.fillPost((this.sortAsc ? "▲" : "▼") + c.header, " ", c.width));
@@ -73,7 +78,7 @@ public class Table<Data> {
                 }
             }
         }
-        sb.append(" │\r\n");
+        sb.append(" " + PIPE + "\r\n");
         int totalWidth = sb.length() - 2;
         sb.append(StringUtils.fillPost("", "─", totalWidth));
         sb.append("\r\n");
@@ -88,9 +93,9 @@ public class Table<Data> {
                 Column<Data> c = this.columns.get(i);
                 if (c.visible) {
                     if (i > 0) {
-                        sb.append(" │ ");
+                        sb.append(" " + PIPE + " ");
                     } else {
-                        sb.append("│ ");
+                        sb.append("" + PIPE + " ");
                     }
                     if (c.right) {
                         sb.append(StringUtils.fillPre(String.valueOf(c.renderer.getSubHeader(this.rows, c)), " ", c.width));
@@ -99,28 +104,37 @@ public class Table<Data> {
                     }
                 }
             }
-            sb.append(" │\r\n");
+            sb.append(" " + PIPE + "\r\n");
             sb.append(StringUtils.fillPost("", "=", totalWidth) + "\r\n");
         }
         int row = 0;
         for (Data d : this.rows) {
+            int maxLines = 1;
             for (int i = 0; i < this.columns.size(); i++) {
                 Column<Data> c = this.columns.get(i);
-                if (c.visible) {
-                    if (i > 0) {
-                        sb.append(" │ ");
-                    } else {
-                        sb.append("│ ");
-                    }
-                    if (c.right) {
-                        sb.append(StringUtils.fillPre(String.valueOf(c.renderer.getString(d, row, c)), " ", c.width));
-                    } else {
-                        sb.append(StringUtils.fillPost(String.valueOf(c.renderer.getString(d, row, c)), " ", c.width));
+                maxLines = Math.max(maxLines, Regex.getLines(String.valueOf(c.renderer.getString(d, row, c))).length);
+            }
+            for (int l = 0; l < maxLines; l++) {
+                for (int i = 0; i < this.columns.size(); i++) {
+                    Column<Data> c = this.columns.get(i);
+                    if (c.visible) {
+                        String[] lines = Regex.getLines(String.valueOf(c.renderer.getString(d, row, c)));
+                        String value = l < lines.length ? lines[l] : "";
+                        if (i > 0) {
+                            sb.append(" " + PIPE + " ");
+                        } else {
+                            sb.append("" + PIPE + " ");
+                        }
+                        if (c.right) {
+                            sb.append(StringUtils.fillPre(value, " ", c.width));
+                        } else {
+                            sb.append(StringUtils.fillPost(value, " ", c.width));
+                        }
                     }
                 }
+                sb.append(" " + PIPE + "\r\n");
             }
             row++;
-            sb.append(" │\r\n");
         }
         sb.append(StringUtils.fillPost("", "─", totalWidth));
         if (this.footer) {
@@ -129,9 +143,9 @@ public class Table<Data> {
                 Column<Data> c = this.columns.get(i);
                 if (c.visible) {
                     if (i > 0) {
-                        sb.append(" │ ");
+                        sb.append(" " + PIPE + " ");
                     } else {
-                        sb.append("│ ");
+                        sb.append("" + PIPE + " ");
                     }
                     if (c.right) {
                         sb.append(StringUtils.fillPre(String.valueOf(c.renderer.getFooter(this.rows, c)), " ", c.width));
@@ -140,7 +154,7 @@ public class Table<Data> {
                     }
                 }
             }
-            sb.append(" │\r\n");
+            sb.append(" " + PIPE + "\r\n");
             sb.append(StringUtils.fillPost("", "=", totalWidth));
         }
         return sb.toString();
@@ -156,7 +170,9 @@ public class Table<Data> {
         }
         int i = 0;
         for (Data d : this.rows) {
-            max = Math.max(max, String.valueOf(c.renderer.getString(d, i++, c)).length());
+            for (String line : Regex.getLines(String.valueOf(c.renderer.getString(d, i++, c)))) {
+                max = Math.max(max, line.length());
+            }
         }
         return Math.max(c.minWidth, max);
     }
