@@ -221,12 +221,35 @@ public abstract class SimpleUseNet {
         }
     }
 
+    private void checkInvalidAuth(final CommandResponse response) throws InvalidAuthException {
+        switch (response.getResponseCode()) {
+        case 481:
+            throw new InvalidAuthException(response.getResponseCode() + "|" + response.getMessage());
+        case 482:
+            if (StringUtils.containsIgnoreCase(response.getMessage(), "incorrect")) {
+                throw new InvalidAuthException(response.getResponseCode() + "|" + response.getMessage());
+            }
+            if (StringUtils.containsIgnoreCase(response.getMessage(), "expired")) {
+                throw new InvalidAuthException(response.getResponseCode() + "|" + response.getMessage());
+            }
+            if (StringUtils.containsIgnoreCase(response.getMessage(), "suspended")) {
+                throw new InvalidAuthException(response.getResponseCode() + "|" + response.getMessage());
+            }
+            break;
+        case 502:
+            if (StringUtils.containsIgnoreCase(response.getMessage(), "Authentication Failed") || StringUtils.containsIgnoreCase(response.getMessage(), "Authentication details unknown")) {
+                // user/pass incorrect
+                throw new InvalidAuthException(response.getResponseCode() + "|" + response.getMessage());
+            }
+        }
+    }
+
     private void authenticate(String username, String password) throws IOException {
         final String user = username != null ? username : "";
         CommandResponse response = sendCmd(COMMAND.AUTHINFO_USER, user);
         switch (response.getResponseCode()) {
         case 281:
-            // no pass required
+            // user correct/no pass required
             return;
         case 381:
             // pass required
@@ -236,35 +259,24 @@ public abstract class SimpleUseNet {
             case 281:
                 // user/pass correct
                 return;
-            case 481:
-                throw new InvalidAuthException(response.getResponseCode() + "|" + response.getMessage());
-            case 482:
-                if (StringUtils.containsIgnoreCase(response.getMessage(), "incorrect")) {
-                    throw new InvalidAuthException(response.getResponseCode() + "|" + response.getMessage());
-                }
-                if (StringUtils.containsIgnoreCase(response.getMessage(), "expired")) {
-                    throw new InvalidAuthException(response.getResponseCode() + "|" + response.getMessage());
-                }
-                if (StringUtils.containsIgnoreCase(response.getMessage(), "suspended")) {
-                    throw new InvalidAuthException(response.getResponseCode() + "|" + response.getMessage());
-                }
+            default:
+                checkInvalidAuth(response);
                 break;
-            case 502:
-                if (StringUtils.containsIgnoreCase(response.getMessage(), "Authentication Failed")) {
-                    // user/pass incorrect
-                    throw new InvalidAuthException(response.getResponseCode() + "|" + response.getMessage());
-                }
             }
+            break;
+        default:
+            checkInvalidAuth(response);
+            break;
         }
         throw new UnknownResponseException(response);
     }
 
     private final ByteArrayOutputStream lineBuffer = new ByteArrayOutputStream() {
-                                                       @Override
-                                                       public synchronized byte[] toByteArray() {
-                                                           return buf;
-                                                       };
-                                                   };
+        @Override
+        public synchronized byte[] toByteArray() {
+            return buf;
+        };
+    };
 
     protected synchronized String readLine() throws IOException {
         return readLine(lineBuffer);
