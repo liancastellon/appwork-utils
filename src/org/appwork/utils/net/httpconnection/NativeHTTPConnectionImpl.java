@@ -51,7 +51,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.WeakHashMap;
-import java.util.zip.GZIPInputStream;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
@@ -59,6 +58,7 @@ import javax.net.ssl.SSLSession;
 
 import org.appwork.net.protocol.http.HTTPConstants;
 import org.appwork.utils.StringUtils;
+import org.appwork.utils.net.CountingInputStream;
 import org.appwork.utils.net.CountingOutputStream;
 import org.appwork.utils.net.EmptyInputStream;
 import org.appwork.utils.net.NullOutputStream;
@@ -411,22 +411,22 @@ public class NativeHTTPConnectionImpl implements HTTPConnection {
                         final String encoding = this.getHeaderField(HTTPConstants.HEADER_RESPONSE_CONTENT_ENCODING);
                         if (encoding == null || encoding.length() == 0 || "none".equalsIgnoreCase(encoding) || "identity".equalsIgnoreCase(encoding)) {
                             /* no encoding */
-                            this.convertedInputStream = rawInputStream;
+                            this.convertedInputStream = new CountingInputStream(rawInputStream);
                         } else if ("gzip".equalsIgnoreCase(encoding)) {
                             /* gzip encoding */
-                            this.convertedInputStream = new GZIPInputStream(rawInputStream);
+                            this.convertedInputStream = new CountingGZIPInputStream(rawInputStream);
                         } else if ("deflate".equalsIgnoreCase(encoding)) {
                             /* deflate encoding */
-                            this.convertedInputStream = new java.util.zip.InflaterInputStream(rawInputStream, new java.util.zip.Inflater(true));
+                            this.convertedInputStream = new CountingInflaterInputStream(rawInputStream, new java.util.zip.Inflater(true));
                         } else {
                             /* unsupported */
                             this.contentDecoded = false;
-                            this.convertedInputStream = rawInputStream;
+                            this.convertedInputStream = new CountingInputStream(rawInputStream);
                         }
                     }
                 } else {
                     /* use original inputstream */
-                    this.convertedInputStream = rawInputStream;
+                    this.convertedInputStream = new CountingInputStream(rawInputStream);
                 }
             }
             return this.convertedInputStream;

@@ -73,6 +73,7 @@ import org.appwork.utils.Regex;
 import org.appwork.utils.StringUtils;
 import org.appwork.utils.encoding.URLDecoderFixer;
 import org.appwork.utils.net.ChunkedInputStream;
+import org.appwork.utils.net.CountingInputStream;
 import org.appwork.utils.net.CountingOutputStream;
 import org.appwork.utils.net.EmptyInputStream;
 import org.appwork.utils.net.LimitedInputStream;
@@ -1256,15 +1257,16 @@ public class HTTPConnectionImpl implements HTTPConnection {
                         final String encodingTransfer = this.getHeaderField(HTTPConstants.HEADER_RESPONSE_CONTENT_TRANSFER_ENCODING);
                         if ("base64".equalsIgnoreCase(encodingTransfer)) {
                             /* base64 encoded content */
-                            // TRansfer encoding is not allowed to use Content.Length, thus does not need the counter. We implement it anyway to have access to it if we need it some day
-                            //https://tools.ietf.org/html/rfc7230#section-3.3.1
+                            // TRansfer encoding is not allowed to use Content.Length, thus does not need the counter. We implement it
+                            // anyway to have access to it if we need it some day
+                            // https://tools.ietf.org/html/rfc7230#section-3.3.1
                             rawInputStream = new CountingBase64InputStream(rawInputStream);
                         }
                         /* we convert different content-encodings to normal inputstream */
                         final String encoding = this.getHeaderField(HTTPConstants.HEADER_RESPONSE_CONTENT_ENCODING);
                         if (encoding == null || encoding.length() == 0 || "none".equalsIgnoreCase(encoding) || "identity".equalsIgnoreCase(encoding)) {
                             /* no encoding */
-                            this.convertedInputStream = rawInputStream;
+                            this.convertedInputStream = new CountingInputStream(rawInputStream);
                         } else if ("gzip".equalsIgnoreCase(encoding)) {
                             /* gzip encoding */
                             this.convertedInputStream = new CountingGZIPInputStream(rawInputStream);
@@ -1274,14 +1276,14 @@ public class HTTPConnectionImpl implements HTTPConnection {
                         } else {
                             /* unsupported */
                             this.contentDecoded = false;
-                            this.convertedInputStream = rawInputStream;
+                            this.convertedInputStream = new CountingInputStream(rawInputStream);
                         }
                     }
                 } else {
                     /*
                      * use original inputstream OR LimitedInputStream from HeadRequest
                      */
-                    this.convertedInputStream = rawInputStream;
+                    this.convertedInputStream = new CountingInputStream(rawInputStream);
                 }
             }
             return this.convertedInputStream;

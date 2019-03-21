@@ -57,7 +57,7 @@ public class CountingBase64InputStream extends Base64InputStream implements Coun
 
     /*
      * (non-Javadoc)
-     *
+     * 
      * @see org.appwork.utils.net.CountingConnection#transferedBytes()
      */
     @Override
