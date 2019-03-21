@@ -59,6 +59,8 @@ import org.appwork.utils.Interruptible;
 import org.appwork.utils.InterruptibleThread;
 import org.appwork.utils.logging2.LogInterface;
 import org.appwork.utils.net.ChunkedOutputStream;
+import org.appwork.utils.net.CountingConnection;
+import org.appwork.utils.net.CountingInputStream;
 import org.appwork.utils.net.DownloadProgress;
 import org.appwork.utils.net.URLHelper;
 import org.appwork.utils.net.UploadProgress;
@@ -241,6 +243,9 @@ public class BasicHTTP implements Interruptible {
                     }
                     this.checkResponseCode();
                     input = this.connection.getInputStream();
+                    if (!(input instanceof CountingConnection)) {
+                        input = new CountingInputStream(input);
+                    }
                     if (this.connection.getCompleteContentLength() >= 0) {
                         /* contentLength is known */
                         if (maxSize > 0 && this.connection.getCompleteContentLength() > maxSize) {
@@ -278,7 +283,7 @@ public class BasicHTTP implements Interruptible {
                             } catch (IOException e) {
                                 throw new WriteIOException(e);
                             }
-                            loaded += len;
+                            loaded = ((CountingConnection) input).transferedBytes();
                             if (maxSize > 0 && loaded > maxSize) {
                                 throw new BadResponseLengthException(connection, maxSize);
                             }
@@ -749,7 +754,10 @@ public class BasicHTTP implements Interruptible {
                     this.checkResponseCode();
                     final byte[] b = new byte[32767];
                     long loaded = 0;
-                    final InputStream input = this.connection.getInputStream();
+                    InputStream input = this.connection.getInputStream();
+                    if (!(input instanceof CountingConnection)) {
+                        input = new CountingInputStream(input);
+                    }
                     while (true) {
                         final int len;
                         try {
@@ -768,7 +776,7 @@ public class BasicHTTP implements Interruptible {
                             } catch (final IOException e) {
                                 throw new WriteIOException(e);
                             }
-                            loaded += len;
+                            loaded = ((CountingConnection) input).transferedBytes();
                             if (downloadProgress != null) {
                                 downloadProgress.increaseLoaded(len);
                             }

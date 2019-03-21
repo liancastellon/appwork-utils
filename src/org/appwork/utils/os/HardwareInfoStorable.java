@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.regex.Pattern;
 
 import org.appwork.storage.Storable;
 import org.appwork.utils.CompareUtils;
@@ -224,6 +225,31 @@ public class HardwareInfoStorable implements Storable {
      * @param value
      */
     public void add(String category, int index, String key, String value) {
+        value = value.replaceAll(Pattern.quote("&amp;"), "&");
+        for (Entry e : entries) {
+            if (e.category.equals(category) && e.index == index && e.value.equals(value)) {
+                return;
+            }
+        }
+        if ("PNPDeviceID".equalsIgnoreCase(key) || "DeviceID".equalsIgnoreCase(key)) {
+            // https://www.keysight.com/main/editorial.jspx?ckey=2039700&id=2039700&nid=-11143.0.00&lc=ger&cc=DE
+            String vendor = new Regex(value, "[\\\\;&]VEN_([a-fA-F0-9]+)").getMatch(0);
+            String device = new Regex(value, "[\\\\;&]DEV_([a-fA-F0-9]+)").getMatch(0);
+            String subsys = new Regex(value, "[\\\\;&]SUBSYS_([a-fA-F0-9]+)").getMatch(0);
+            String portType = new Regex(value, "^([^\\\\//]+)").getMatch(0);
+            if (StringUtils.isNotEmpty(portType)) {
+                entries.add(new Entry(category, index, "portType", portType));
+            }
+            if (StringUtils.isNotEmpty(vendor)) {
+                entries.add(new Entry(category, index, "vendorID", vendor));
+            }
+            if (StringUtils.isNotEmpty(device)) {
+                entries.add(new Entry(category, index, "deviceID", device));
+            }
+            if (StringUtils.isNotEmpty(subsys)) {
+                entries.add(new Entry(category, index, "subsysID", subsys));
+            }
+        }
         entries.add(new Entry(category, index, key, value));
     }
 
@@ -240,15 +266,8 @@ public class HardwareInfoStorable implements Storable {
         int maxKey = 0;
         int maxValue = 0;
         for (Entry e : entries) {
-            if ("PNPDeviceID".equalsIgnoreCase(e.key) || "DeviceID".equalsIgnoreCase(e.key)) {
-                maxKey = Math.max(maxKey, "VendorID".length());
-                maxKey = Math.max(maxKey, "DeviceID".length());
-                maxKey = Math.max(maxKey, "SubSysID".length());
-                maxValue = Math.max(maxValue, 10);
-            } else {
-                maxKey = Math.max(maxKey, e.key.length());
-                maxValue = Math.max(maxValue, e.value.length());
-            }
+            maxKey = Math.max(maxKey, e.key.length());
+            maxValue = Math.max(maxValue, e.value.length());
         }
         for (Entry e : entries) {
             if (last == null || !StringUtils.equals(e.category, last.category)) {
@@ -258,24 +277,7 @@ public class HardwareInfoStorable implements Storable {
                 sb.append(StringUtils.fillPost("   " + (e.getIndex() + 1) + ".", "-", maxKey + maxValue + 6)).append("\r\n");
             }
             // https://devicehunt.com/search/type/pci/vendor/5853/device/1003
-            if ("PNPDeviceID".equalsIgnoreCase(e.key) || "DeviceID".equalsIgnoreCase(e.key)) {
-                // https://www.keysight.com/main/editorial.jspx?ckey=2039700&id=2039700&nid=-11143.0.00&lc=ger&cc=DE
-                String vendor = new Regex(e.value, "[\\\\;]VEN_([a-fA-F0-9]+)").getMatch(0);
-                String device = new Regex(e.value, "[\\\\;]DEV_([a-fA-F0-9]+)").getMatch(0);
-                String subsys = new Regex(e.value, "[\\\\;]SUBSYS_([a-fA-F0-9]+)").getMatch(0);
-                if (StringUtils.isNotEmpty(vendor) && dupes.add("vendor-" + e.index + "=" + vendor)) {
-                    sb.append("   " + StringUtils.fillPost("VendorID", " ", maxKey)).append(" = ").append(vendor).append("\r\n");
-                }
-                if (StringUtils.isNotEmpty(device) && dupes.add("device-" + e.index + "=" + vendor)) {
-                    sb.append("   " + StringUtils.fillPost("DeviceID", " ", maxKey)).append(" = ").append(device).append("\r\n");
-                    // sb.append("\t" + StringUtils.fillPost(e.key, " ", 30)).append("\t = \t").append(e.value).append("\r\n");
-                }
-                if (StringUtils.isNotEmpty(vendor) && dupes.add("subsys-" + e.index + "=" + subsys)) {
-                    sb.append("   " + StringUtils.fillPost("SubSysID", " ", maxKey)).append(" = ").append(subsys).append("\r\n");
-                }
-            } else {
-                sb.append("   " + StringUtils.fillPost(e.key, " ", maxKey)).append(" = ").append(e.value).append("\r\n");
-            }
+            sb.append("   " + StringUtils.fillPost(e.key, " ", maxKey)).append(" = ").append(e.value).append("\r\n");
             last = e;
         }
         return sb.toString();

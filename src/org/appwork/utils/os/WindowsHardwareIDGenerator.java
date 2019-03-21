@@ -4,8 +4,10 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 import org.appwork.console.table.Column;
 import org.appwork.console.table.Renderer;
@@ -27,7 +29,10 @@ public class WindowsHardwareIDGenerator {
      * @throws IOException
      * @throws InterruptedException
      */
-    public WindowsHardwareIDGenerator() throws IOException, InterruptedException {
+    public WindowsHardwareIDGenerator() {
+    }
+
+    public HardwareInfoStorable build() throws IOException, InterruptedException {
         data = new HardwareInfoStorable();
         data.setTime(System.currentTimeMillis());
         this.appendBattery();
@@ -46,6 +51,7 @@ public class WindowsHardwareIDGenerator {
         appendWindowsCryptoID();
         appendWindowsOS();
         appendWindowsDeviceID();
+        return getData();
     }
 
     /**
@@ -182,12 +188,28 @@ public class WindowsHardwareIDGenerator {
 
     private void appendGraphicsCard() throws IOException, InterruptedException {
         CSVContent result = this.wmic("path", "Win32_videocontroller", "get", "*");
-        String[] fields = new String[] { "AdapterCompatibility", "AdapterDACType", "Caption", "VideoProcessor", "PNPDeviceID", "DeviceID" };
+        String[] fields = new String[] { "AdapterCompatibility", "AdapterDACType", "Caption", "VideoProcessor", "PNPDeviceID" };
         result.sort(fields);
         // // System.out.println(result);
         int index = 0;
+        HashSet<String> allowedPortTypes = new HashSet<String>();
+        allowedPortTypes.add("pci");
+        allowedPortTypes.add("scsi");
+        allowedPortTypes.add("hdaudio");
+        allowedPortTypes.add("acpi");
+        allowedPortTypes.add("swd");
         for (int i = 0; i < result.size(); i++) {
-            // filter virtual devices like │ Citrix Indirect Display Adapter │
+            String deviceID = result.get("PNPDeviceID", i);
+            String portType = getPortTypeByDeviceID(deviceID);
+            if (isVirtualHardware(result.get(i))) {
+                continue;
+            }
+            if (portType == null || !allowedPortTypes.contains(portType)) {
+                continue;
+            }
+            if (getAddressByDeviceID(deviceID) == null) {
+                continue;
+            }
             if (StringUtils.isEmpty(result.get("AdapterRAM", i))) {
                 continue;
             }
@@ -197,13 +219,12 @@ public class WindowsHardwareIDGenerator {
             if (StringUtils.isEmpty(result.get("VideoProcessor", i))) {
                 continue;
             }
-            if (isVirtualHardware(result.get(i))) {
+            String address = getAddressByDeviceID(result.get("PNPDeviceID", i));
+            if (address == null) {
                 continue;
             }
-            if (!StringUtils.startsWithCaseInsensitive(result.get("PNPDeviceID", i), "PCI\\")) {
-                for (String s : fields) {
-                    this.add("GraphicsCard", result, s, i, index);
-                }
+            for (String s : fields) {
+                this.add("GraphicsCard", result, s, i, index);
             }
             index++;
             // probably given by the os
@@ -214,18 +235,28 @@ public class WindowsHardwareIDGenerator {
     private void appendPnPentity() throws IOException, InterruptedException {
         // https://www.keysight.com/main/editorial.jspx?ckey=2039700&id=2039700&nid=-11143.0.00&lc=ger&cc=DE
         CSVContent result = this.wmic("path", "Win32_PnPEntity", "get", "*");
-        String[] fields = new String[] { "Service", "PNPDeviceID", "DeviceID", "Caption", "Manufacturer" };
+        String[] fields = new String[] { "PNPDeviceID", "DeviceID", "Caption", "Manufacturer" };
         result.sort(fields);
         // System.out.println(result);
         int index = 0;
+        HashSet<String> allowedPortTypes = new HashSet<String>();
+        allowedPortTypes.add("pci");
         for (int i = 0; i < result.size(); i++) {
             String deviceID = result.get("DeviceID", i);
+            String portType = getPortTypeByDeviceID(deviceID);
             if (isVirtualHardware(result.get(i))) {
                 continue;
             }
-            if (deviceID == null || !deviceID.toLowerCase(Locale.ENGLISH).startsWith("pci\\")) {
+            if (!(deviceID.toLowerCase(Locale.ENGLISH).contains("subsys_") && deviceID.toLowerCase(Locale.ENGLISH).contains("ven_") && deviceID.toLowerCase(Locale.ENGLISH).contains("dev_"))) {
                 continue;
             }
+            if (portType == null || !allowedPortTypes.contains(portType)) {
+                continue;
+            }
+            if (getAddressByDeviceID(deviceID) == null) {
+                continue;
+            }
+            System.out.println(result.get(i));
             for (String s : fields) {
                 this.add("Devices", result, s, i, index);
             }
@@ -235,18 +266,32 @@ public class WindowsHardwareIDGenerator {
         }
     }
 
+    protected String getPortTypeByDeviceID(String deviceID) {
+        return new Regex(deviceID.toLowerCase(Locale.ENGLISH), "^([^\\\\//]+)").getMatch(0);
+    }
+
     private void appendNetwork() throws IOException, InterruptedException {
         CSVContent result = this.wmic("nic", "get", "*");
-        String[] fields = new String[] { "ProductName", "ServiceName", "Manufacturer", "PNPDeviceID", "MACAddress" };
+        String[] fields = new String[] { "ProductName", "Manufacturer", "PNPDeviceID", "MACAddress" };
         result.sort(fields);
         // System.out.println(result);
         int index = 0;
+        HashSet<String> allowedPortTypes = new HashSet<String>();
+        allowedPortTypes.add("pci");
+        allowedPortTypes.add("scsi");
+        // allowedPortTypes.add("hdaudio");
+        allowedPortTypes.add("acpi");
+        allowedPortTypes.add("swd");
         for (int i = 0; i < result.size(); i++) {
             String deviceID = result.get("PNPDeviceID", i);
+            String portType = getPortTypeByDeviceID(deviceID);
             if (isVirtualHardware(result.get(i))) {
                 continue;
             }
-            if (deviceID == null || !deviceID.toLowerCase(Locale.ENGLISH).startsWith("pci\\")) {
+            if (portType == null || !allowedPortTypes.contains(portType)) {
+                continue;
+            }
+            if (getAddressByDeviceID(deviceID) == null) {
                 continue;
             }
             for (String s : fields) {
@@ -256,6 +301,29 @@ public class WindowsHardwareIDGenerator {
             // probably given by the os
             // add(sb, result, "VolumeSerialNumber", i);
         }
+    }
+
+    /**
+     * Check the hardware address. this should return null for virtual devices
+     *
+     * @param deviceID
+     * @return
+     * @throws InterruptedException
+     * @throws IOException
+     */
+    private String getAddressByDeviceID(String deviceID) throws IOException, InterruptedException {
+        if (deviceID == null) {
+            return null;
+        }
+        deviceID = deviceID.replaceAll(Pattern.quote("&amp;"), "&");
+        String reg;
+        if (CrossSystem.is64BitOperatingSystem()) {
+            // with "/reg:64" the command does not work if called from a 3 bit jvm
+            reg = ProcessBuilderFactory.runCommand("reg", "query", "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Enum\\" + deviceID, "/reg:64", "/v", "Address").getStdOutString();
+        } else {
+            reg = ProcessBuilderFactory.runCommand("reg", "query", "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Enum\\" + deviceID, "/v", "Address").getStdOutString();
+        }
+        return new Regex(reg, "\\s+Address\\s+.*\\s+(\\S+)\\s*$").getMatch(0);
     }
 
     private void appendCSProduct() throws IOException, InterruptedException {
@@ -284,27 +352,40 @@ public class WindowsHardwareIDGenerator {
 
     private void appendCDRom() throws IOException, InterruptedException {
         CSVContent result = this.wmic("cdrom", "get", "*");
-        String[] fields = new String[] { "Name", "SerialNumber" };
+        String[] fields = new String[] { "DeviceID", "PNPDeviceID", "Name", "SerialNumber" };
         result.sort(fields);
         // System.out.println(result);
         int index = 0;
+        HashSet<String> allowedPortTypes = new HashSet<String>();
+        allowedPortTypes.add("pci");
+        allowedPortTypes.add("scsi");
+        // allowedPortTypes.add("hdaudio");
+        allowedPortTypes.add("acpi");
+        allowedPortTypes.add("swd");
+        allowedPortTypes.add("ide");
         for (int i = 0; i < result.size(); i++) {
+            String deviceID = result.get("PNPDeviceID", i);
+            String portType = getPortTypeByDeviceID(deviceID);
             if (isVirtualHardware(result.get(i))) {
                 continue;
             }
-            if (StringUtils.startsWithCaseInsensitive(result.get("DeviceID", i), "SCSI\\") || StringUtils.startsWithCaseInsensitive(result.get("DeviceID", i), "IDE\\")) {
-                // seems like virtual devices are >0 (virtual clone drive e.g. at 2)
-                if (!"0".equals(result.get("SCSIPort", i))) {
-                    continue;
-                }
-                if ("unknown".equalsIgnoreCase(result.get("MediaType", i))) {
-                    continue;
-                }
-                for (String s : fields) {
-                    this.add("CDRom", result, s, i, index);
-                }
-                index++;
+            if (portType == null || !allowedPortTypes.contains(portType)) {
+                continue;
             }
+            if (getAddressByDeviceID(deviceID) == null) {
+                continue;
+            }
+            // seems like virtual devices are >0 (virtual clone drive e.g. at 2)
+            if (!"0".equals(result.get("SCSIPort", i))) {
+                continue;
+            }
+            if ("unknown".equalsIgnoreCase(result.get("MediaType", i))) {
+                continue;
+            }
+            for (String s : fields) {
+                this.add("CDRom", result, s, i, index);
+            }
+            index++;
         }
     }
 
@@ -331,14 +412,28 @@ public class WindowsHardwareIDGenerator {
         String[] fields = new String[] { "Caption", "FirmwareRevision", "Model", "SerialNumber", "Size" };
         result.sort(fields);
         int index = 0;
+        HashSet<String> allowedPortTypes = new HashSet<String>();
+        allowedPortTypes.add("pci");
+        allowedPortTypes.add("scsi");
+        allowedPortTypes.add("hdaudio");
+        allowedPortTypes.add("acpi");
+        allowedPortTypes.add("swd");
         for (int i = 0; i < result.size(); i++) {
+            String deviceID = result.get("PNPDeviceID", i);
+            String portType = getPortTypeByDeviceID(deviceID);
+            if (isVirtualHardware(result.get(i))) {
+                continue;
+            }
+            if (portType == null || !allowedPortTypes.contains(portType)) {
+                continue;
+            }
+            if (getAddressByDeviceID(deviceID) == null) {
+                continue;
+            }
             if (StringUtils.isEmpty(result.get("SerialNumber", i))) {
                 continue;
             }
             if (!StringUtils.containsIgnoreCase(result.get("MediaType", i), "fixed")) {
-                continue;
-            }
-            if (isVirtualHardware(result.get(i))) {
                 continue;
             }
             for (String s : fields) {
@@ -356,6 +451,7 @@ public class WindowsHardwareIDGenerator {
         // TODO Auto-generated method stub
         boolean ret = StringUtils.containsIgnoreCase(line, "virtu");
         ret |= StringUtils.containsIgnoreCase(line, "Citrix");
+        ret |= StringUtils.containsIgnoreCase(line, "portable");
         // ret |= StringUtils.containsIgnoreCase(line, "vm");
         if (ret) {
             LogV3.info("Virtual Device: " + line);
