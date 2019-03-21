@@ -90,6 +90,11 @@ public abstract class TypeRef<T> {
                                                                                   return long[].class;
                                                                               };
                                                                           };
+    public static final TypeRef<Object[]>                 OBJECT_ARRAY    = new TypeRef<Object[]>() {
+                                                                              public Type getType() {
+                                                                                  return Object[].class;
+                                                                              };
+                                                                          };
     private final Type                                    type;
 
     public TypeRef() {

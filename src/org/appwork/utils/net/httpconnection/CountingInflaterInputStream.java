@@ -31,29 +31,39 @@
  *     If the AGPL does not fit your needs, please contact us. We'll find a solution.
  * ====================================================================================================================================================
  * ==================================================================================================================================================== */
-package org.appwork.utils.os.tests;
+package org.appwork.utils.net.httpconnection;
 
-import java.io.IOException;
+import java.io.InputStream;
+import java.util.zip.Inflater;
+import java.util.zip.InflaterInputStream;
 
-import org.appwork.storage.JSonStorage;
-import org.appwork.utils.Application;
-import org.appwork.utils.os.HardwareInfoStorable;
-import org.appwork.utils.os.WindowsHardwareIDGenerator;
+import org.appwork.utils.net.CountingConnection;
+import org.appwork.utils.net.CountingInputStream;
 
 /**
  * @author Thomas
- * @date 11.03.2019
+ * @date 20.03.2019
  *
  */
-public class TestHardwareIDGeneratorStorable {
-    public static void main(String[] args) throws IOException, InterruptedException {
-        Application.setApplication(".test");
-        WindowsHardwareIDGenerator id = new WindowsHardwareIDGenerator();
-        System.out.println(id.build().toIDString());
-        String hid;
-        System.out.println(hid = id.getData().toHid(null, null));
-        ;
-        HardwareInfoStorable restored = JSonStorage.restoreFromString(JSonStorage.serializeToJson(id.getData()), HardwareInfoStorable.TYPE);
-        System.out.println(restored.toHid(null, null) + " --> " + (restored.toHid(null, null).equals(hid)));
+public class CountingInflaterInputStream extends InflaterInputStream implements CountingConnection {
+    private final CountingInputStream countingStream;
+
+    /**
+     * @param rawInputStream
+     * @param inflater
+     */
+    public CountingInflaterInputStream(InputStream is, Inflater inflater) {
+        super(new CountingInputStream(is), inflater);
+        countingStream = (CountingInputStream) in;
+    }
+
+    /*
+     * (non-Javadoc)
+     *
+     * @see org.appwork.utils.net.CountingConnection#transferedBytes()
+     */
+    @Override
+    public long transferedBytes() {
+        return countingStream.transferedBytes();
     }
 }

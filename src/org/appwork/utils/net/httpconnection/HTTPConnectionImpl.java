@@ -63,7 +63,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.zip.GZIPInputStream;
 
 import org.appwork.loggingv3.LogV3;
 import org.appwork.net.protocol.http.HTTPConstants;
@@ -73,7 +72,6 @@ import org.appwork.utils.KeyValueStringEntry;
 import org.appwork.utils.Regex;
 import org.appwork.utils.StringUtils;
 import org.appwork.utils.encoding.URLDecoderFixer;
-import org.appwork.utils.net.Base64InputStream;
 import org.appwork.utils.net.ChunkedInputStream;
 import org.appwork.utils.net.CountingOutputStream;
 import org.appwork.utils.net.EmptyInputStream;
@@ -200,11 +198,11 @@ public class HTTPConnectionImpl implements HTTPConnection {
     protected static final HashMap<String, LinkedList<KeepAliveSocketStream>> KEEPALIVEPOOL         = new HashMap<String, LinkedList<KeepAliveSocketStream>>();
     protected static final Object                                             LOCK                  = new Object();
     protected static final DelayedRunnable                                    KEEPALIVECLEANUPTIMER = new DelayedRunnable(10000, 30000) {
-        @Override
-        public void delayedrun() {
-            cleanupKeepAlivePools();
-        }
-    };
+                                                                                                        @Override
+                                                                                                        public void delayedrun() {
+                                                                                                            cleanupKeepAlivePools();
+                                                                                                        }
+                                                                                                    };
 
     private static final void cleanupKeepAlivePools() {
         synchronized (HTTPConnectionImpl.LOCK) {
@@ -1258,7 +1256,9 @@ public class HTTPConnectionImpl implements HTTPConnection {
                         final String encodingTransfer = this.getHeaderField(HTTPConstants.HEADER_RESPONSE_CONTENT_TRANSFER_ENCODING);
                         if ("base64".equalsIgnoreCase(encodingTransfer)) {
                             /* base64 encoded content */
-                            rawInputStream = new Base64InputStream(rawInputStream);
+                            // TRansfer encoding is not allowed to use Content.Length, thus does not need the counter. We implement it anyway to have access to it if we need it some day
+                            //https://tools.ietf.org/html/rfc7230#section-3.3.1
+                            rawInputStream = new CountingBase64InputStream(rawInputStream);
                         }
                         /* we convert different content-encodings to normal inputstream */
                         final String encoding = this.getHeaderField(HTTPConstants.HEADER_RESPONSE_CONTENT_ENCODING);
@@ -1267,10 +1267,10 @@ public class HTTPConnectionImpl implements HTTPConnection {
                             this.convertedInputStream = rawInputStream;
                         } else if ("gzip".equalsIgnoreCase(encoding)) {
                             /* gzip encoding */
-                            this.convertedInputStream = new GZIPInputStream(rawInputStream);
+                            this.convertedInputStream = new CountingGZIPInputStream(rawInputStream);
                         } else if ("deflate".equalsIgnoreCase(encoding)) {
                             /* deflate encoding */
-                            this.convertedInputStream = new java.util.zip.InflaterInputStream(rawInputStream, new java.util.zip.Inflater(true));
+                            this.convertedInputStream = new CountingInflaterInputStream(rawInputStream, new java.util.zip.Inflater(true));
                         } else {
                             /* unsupported */
                             this.contentDecoded = false;
