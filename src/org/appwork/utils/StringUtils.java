@@ -45,6 +45,20 @@ public class StringUtils {
         return input.contains(contains);
     }
 
+    public static String[] getLines(final String arg) {
+        if (arg == null) {
+            return new String[] {};
+        } else {
+            final String[] temp = arg.split("(\r\n|\r|\n)");
+            final int tempLength = temp.length;
+            final String[] output = new String[tempLength];
+            for (int i = 0; i < tempLength; i++) {
+                output[i] = temp[i].trim();
+            }
+            return output;
+        }
+    }
+
     /**
      * @param name
      * @param jdPkgRule
