@@ -6,7 +6,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 
-import org.appwork.utils.Regex;
 import org.appwork.utils.StringUtils;
 
 public class Table<Data> {
@@ -112,13 +111,13 @@ public class Table<Data> {
             int maxLines = 1;
             for (int i = 0; i < this.columns.size(); i++) {
                 Column<Data> c = this.columns.get(i);
-                maxLines = Math.max(maxLines, Regex.getLines(String.valueOf(c.renderer.getString(d, row, c))).length);
+                maxLines = Math.max(maxLines, StringUtils.getLines(String.valueOf(c.renderer.getString(d, row, c))).length);
             }
             for (int l = 0; l < maxLines; l++) {
                 for (int i = 0; i < this.columns.size(); i++) {
                     Column<Data> c = this.columns.get(i);
                     if (c.visible) {
-                        String[] lines = Regex.getLines(String.valueOf(c.renderer.getString(d, row, c)));
+                        String[] lines = StringUtils.getLines(String.valueOf(c.renderer.getString(d, row, c)));
                         String value = l < lines.length ? lines[l] : "";
                         if (i > 0) {
                             sb.append(" " + PIPE + " ");
@@ -170,7 +169,7 @@ public class Table<Data> {
         }
         int i = 0;
         for (Data d : this.rows) {
-            for (String line : Regex.getLines(String.valueOf(c.renderer.getString(d, i++, c)))) {
+            for (String line : StringUtils.getLines(String.valueOf(c.renderer.getString(d, i++, c)))) {
                 max = Math.max(max, line.length());
             }
         }
