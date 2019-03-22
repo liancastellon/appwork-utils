@@ -308,4 +308,5 @@ public class HTTPConstants {
     public static final String HEADER_REQUEST_ORIGIN                         = "Origin";
     public static final String HEADER_RESPONSE_ACCESS_CONTROL_EXPOSE_HEADERS = "Access-Control-Expose-Headers";
     public static final String HEADER_VALUE_CONTENTTYPE_JSON_UTF_8           = "application/json; charset=utf-8";
+    public static final String HEADER_VALUE_CONTENTTYPE_TEXT_UTF_8           = "text/plain; charset=utf-8";
 }
