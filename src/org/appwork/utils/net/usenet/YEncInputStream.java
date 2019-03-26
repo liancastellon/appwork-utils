@@ -215,7 +215,7 @@ public class YEncInputStream extends InputStream {
         this.client = client;
         this.inputStream = client.getInputStream();
         this.buffer = buffer;
-        String line = new String(buffer.toByteArray(), 0, buffer.size(), "ISO-8859-1");
+        String line = new String(buffer.toByteArray(), 0, buffer.size(), client.getCharSet());
         if (!line.startsWith("=ybegin")) {
             throw new IOException("missing =ybegin");
         }
@@ -513,7 +513,7 @@ public class YEncInputStream extends InputStream {
         buffer.reset();
         final int lineSize = readLine(inputStream);
         final byte[] lineBuffer = buffer.toByteArray();
-        yEncTrailer = new String(lineBuffer, 0, lineSize, "ISO-8859-1");
+        yEncTrailer = new String(lineBuffer, 0, lineSize, client.getCharSet());
         final String sizeValue = getValue(getYEncTrailer(), "size", NUMBER);
         final long size = sizeValue != null ? Long.parseLong(sizeValue) : -1;
         pcrc32Value = getValue(getYEncTrailer(), "pcrc32", CRC32);
