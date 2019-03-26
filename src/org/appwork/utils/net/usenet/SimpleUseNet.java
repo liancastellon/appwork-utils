@@ -41,6 +41,7 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
+import java.nio.charset.Charset;
 
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
@@ -53,6 +54,8 @@ import org.appwork.utils.net.httpconnection.JavaSSLSocketStreamFactory;
 import org.appwork.utils.net.socketconnection.SocketConnection;
 
 public abstract class SimpleUseNet {
+    public static final Charset UTF8 = Charset.forName("UTF-8");
+
     public static enum COMMAND {
         HEAD {
             @Override
@@ -155,6 +158,17 @@ public abstract class SimpleUseNet {
 
     protected boolean useSNIWorkaround() {
         return false;
+    }
+
+    /**
+     * https://tools.ietf.org/html/rfc3977#section-12.5
+     *
+     * The default character set is changed from US-ASCII [ANSI1986] to UTF-8
+     *
+     * @return
+     */
+    public Charset getCharSet() {
+        return UTF8;
     }
 
     public synchronized void connect(SocketAddress socketAddress, final boolean ssl, String username, String password) throws IOException {
@@ -289,7 +303,7 @@ public abstract class SimpleUseNet {
             if (length == -1) {
                 throw new EOFException();
             }
-            final String ret = new String(buffer.toByteArray(), 0, length, "ISO-8859-1");
+            final String ret = new String(buffer.toByteArray(), 0, length, getCharSet());
             logger.info("Read Response:" + ret);
             return ret;
         } catch (final IOException e) {
@@ -412,7 +426,7 @@ public abstract class SimpleUseNet {
                 buffer.reset();
                 final int lineLength = readLine(getInputStream(), buffer);
                 if (lineLength > 0) {
-                    String line = new String(buffer.toByteArray(), 0, lineLength, "ISO-8859-1");
+                    String line = new String(buffer.toByteArray(), 0, lineLength, getCharSet());
                     logger.info("Read Response:" + line);
                     if (line.startsWith("=ybegin")) {
                         logger.info("yEnc Body detected");
@@ -436,7 +450,7 @@ public abstract class SimpleUseNet {
         }
         try {
             logger.info("Send Command:" + request);
-            outputStream.write(request.getBytes("ISO-8859-1"));
+            outputStream.write(request.getBytes(getCharSet()));
             outputStream.write(CRLF);
             outputStream.flush();
         } catch (IOException e) {

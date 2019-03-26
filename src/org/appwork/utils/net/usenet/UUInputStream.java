@@ -50,7 +50,7 @@ public class UUInputStream extends InputStream {
         this.client = client;
         this.inputStream = client.getInputStream();
         this.buffer = buffer;
-        String line = new String(buffer.toByteArray(), 0, buffer.size(), "ISO-8859-1");
+        String line = new String(buffer.toByteArray(), 0, buffer.size(), client.getCharSet());
         if (!line.matches("^begin \\d{3} .+")) {
             throw new IOException("missing uuEncode begin");
         }
@@ -162,7 +162,7 @@ public class UUInputStream extends InputStream {
     private void parseTrailer(final InputStream inputStream) throws IOException {
         buffer.reset();
         client.readLine(inputStream, buffer);
-        trailer = new String(buffer.toByteArray(), 0, buffer.size(), "ISO-8859-1");
+        trailer = new String(buffer.toByteArray(), 0, buffer.size(), client.getCharSet());
         // read body to end to drain inputstream
         readBodyEnd(inputStream);
         // error checks
