@@ -74,9 +74,6 @@ import org.appwork.utils.IO.WriteToFileCallback;
 import org.appwork.utils.StringUtils;
 import org.appwork.utils.reflection.Clazz;
 
-import com.fasterxml.jackson.core.JsonGenerationException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-
 public class JSonStorage {
     /* hash map contains file location as string and the storage instance */
     private static final HashMap<String, Storage>     MAP         = new HashMap<String, Storage>();
@@ -602,13 +599,6 @@ public class JSonStorage {
         }
     }
 
-    /**
-     * @param list
-     * @return
-     * @throws IOException
-     * @throws JsonMappingException
-     * @throws JsonGenerationException
-     */
     public static String serializeToJson(final Object list) throws StorageException {
         try {
             return JSonStorage.JSON_MAPPER.objectToString(list);

@@ -95,6 +95,11 @@ public abstract class TypeRef<T> {
                                                                                   return Object[].class;
                                                                               };
                                                                           };
+    public static final TypeRef<boolean[]>                BOOLEAN_ARRAY   = new TypeRef<boolean[]>() {
+                                                                              public Type getType() {
+                                                                                  return boolean[].class;
+                                                                              };
+                                                                          };
     private final Type                                    type;
 
     public TypeRef() {

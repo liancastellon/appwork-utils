@@ -744,6 +744,9 @@ public class BasicHTTP implements Interruptible {
                     }
                     outputStream.flush();
                     this.connection.finalizeConnect();
+                    if (downloadProgress != null) {
+                        downloadProgress.onConnected(connection);
+                    }
                     this.checkResponseCode();
                     final byte[] b = new byte[32767];
                     InputStream input = this.connection.getInputStream();
