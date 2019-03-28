@@ -440,4 +440,23 @@ public class StringUtils {
             return sb.substring(0, 1).toLowerCase(Locale.ENGLISH) + sb.substring(1);
         }
     }
+
+    /**
+     * @param value
+     * @param the
+     *            split result without empty entries. Returns an empty array for null input
+     * @return
+     */
+    public static String[] splitNoEmpty(String value, String delim) {
+        if (value == null) {
+            return new String[] {};
+        }
+        ArrayList<String> ret = new ArrayList<String>();
+        for (String s : value.split(delim)) {
+            if (StringUtils.isNotEmpty(s)) {
+                ret.add(s);
+            }
+        }
+        return ret.toArray(new String[] {});
+    }
 }
