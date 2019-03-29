@@ -294,6 +294,7 @@ public class HTTPConstants {
     public static final String HEADER_RESPONSE_TRANSFER_ENCODING_CHUNKED     = "chunked";
     public static final String HEADER_RESPONSE_ACCEPT_RANGES                 = "Accept-Ranges";
     public static final String HEADER_RESPONSE_CONTENT_ENCODING              = "Content-Encoding";               // https://tools.ietf.org/html/rfc2616#section-3.5
+    public static final String HEADER_REQUEST_CONTENT_ENCODING               = "Content-Encoding";               // https://tools.ietf.org/html/rfc2616#section-3.5
     public static final String HEADER_RESPONSE_LOCATION                      = "Location";
     public static final String HEADER_RESPONSE_SERVER                        = "Server";
     public static final String HEADER_RESPONSE_ACCESS_CONTROL_ALLOW_ORIGIN   = "Access-Control-Allow-Origin";

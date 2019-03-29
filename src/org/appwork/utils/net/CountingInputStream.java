@@ -52,7 +52,7 @@ public class CountingInputStream extends FilterInputStream implements CountingCo
     public int read() throws IOException {
         final int ret = super.read();
         if (ret != -1) {
-            this.count++;
+            inc(1);
         }
         return ret;
     }
@@ -61,9 +61,17 @@ public class CountingInputStream extends FilterInputStream implements CountingCo
     public int read(final byte[] b, final int off, final int len) throws IOException {
         final int ret = super.read(b, off, len);
         if (ret != -1) {
-            this.count += ret;
+            inc(ret);
         }
         return ret;
+    }
+
+    /**
+     * @param ret
+     * @throws IOException
+     */
+    protected void inc(int ret) throws IOException {
+        count += ret;
     }
 
     protected void setTransferedBytes(long count) {
