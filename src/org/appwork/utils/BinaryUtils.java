@@ -8,26 +8,26 @@ public class BinaryUtils {
      * @param ret
      * @return
      */
-    public static byte[] mergeArrays(byte[]... parts) {
+    public static byte[] mergeArrays(final byte[]... parts) {
         int index = 0;
-        for (byte[] b : parts) {
+        for (final byte[] b : parts) {
             index += b.length;
         }
-        byte[] total = new byte[index];
+        final byte[] ret = new byte[index];
         index = 0;
-        for (byte[] b : parts) {
-            System.arraycopy(b, 0, total, index, b.length);
-            index += b.length;
+        for (final byte[] part : parts) {
+            System.arraycopy(part, 0, ret, index, part.length);
+            index += part.length;
         }
-        return total;
+        return ret;
     }
 
     /**
-     * 
+     *
      * @throws IndexOutOfBoundsException
      * @return true if a and b match for the first <length> bytes starting at <offsetA/offsetB>
      */
-    public static boolean matches(byte[] a, byte[] b, int offsetA, int offsetB, int length) {
+    public static boolean matches(final byte[] a, final byte[] b, final int offsetA, final int offsetB, final int length) {
         for (int i = offsetA; i < offsetA + length; i++) {
             if (a[i] != b[i - offsetA + offsetB]) {
                 return false;
