@@ -45,17 +45,22 @@ public class StringUtils {
         return input.contains(contains);
     }
 
+    /**
+     * WARNING: calls String.trim on each line!
+     *
+     * @param arg
+     * @return
+     */
     public static String[] getLines(final String arg) {
         if (arg == null) {
             return new String[] {};
         } else {
-            final String[] temp = arg.split("(\r\n|\r|\n)");
-            final int tempLength = temp.length;
-            final String[] output = new String[tempLength];
-            for (int i = 0; i < tempLength; i++) {
-                output[i] = temp[i].trim();
+            final String[] splits = arg.split("(\r\n|\r|\n)");
+            final ArrayList<String> ret = new ArrayList<String>(splits.length);
+            for (final String split : splits) {
+                ret.add(split.trim());
             }
-            return output;
+            return ret.toArray(new String[0]);
         }
     }
 
@@ -89,8 +94,8 @@ public class StringUtils {
      * taken from http://stackoverflow.com/questions/4731055/whitespace-matching-regex-java
      */
     final private static String whitespace_chars = "[" /*
-                                                        * dummy empty string for homogeneity
-                                                        */
+     * dummy empty string for homogeneity
+     */
             + "\\u0009" // CHARACTER
             // TABULATION
             + "\\u000A" // LINE
@@ -450,13 +455,15 @@ public class StringUtils {
     public static String[] splitNoEmpty(String value, String delim) {
         if (value == null) {
             return new String[] {};
-        }
-        ArrayList<String> ret = new ArrayList<String>();
-        for (String s : value.split(delim)) {
-            if (StringUtils.isNotEmpty(s)) {
-                ret.add(s);
+        } else {
+            final String splits[] = value.split(delim);
+            final ArrayList<String> ret = new ArrayList<String>(splits.length);
+            for (final String split : splits) {
+                if (StringUtils.isNotEmpty(split)) {
+                    ret.add(split);
+                }
             }
+            return ret.toArray(new String[0]);
         }
-        return ret.toArray(new String[] {});
     }
 }
