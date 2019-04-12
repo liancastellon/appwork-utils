@@ -73,7 +73,7 @@ public class WindowsHardwareIDGenerator {
 
     private void appendBattery() throws IOException, InterruptedException {
         CSVContent result = this.wmic("path", "Win32_Battery", "get", "*");
-        String[] fields = new String[] { "Name", "Chemistry", "DeviceID", "DesignCapacity", "DesignVoltage" };
+        String[] fields = new String[] { "Name", "Chemistry", "DeviceID" };
         // http://www.powertheshell.com/reference/wmireference/root/cimv2/win32_battery/
         // $Chemistry_ReturnValue =
         // @{
@@ -594,7 +594,7 @@ public class WindowsHardwareIDGenerator {
         }
     }
 
-    private CSVContent wmic(String... cmd) throws IOException, InterruptedException {
+    protected CSVContent wmic(String... cmd) throws IOException, InterruptedException {
         String[] full = new String[cmd.length + 3];
         full[0] = WMIC_PATH;
         System.arraycopy(cmd, 0, full, 1, cmd.length);
