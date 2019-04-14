@@ -34,6 +34,7 @@
 package org.appwork.utils.os;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -42,7 +43,6 @@ import java.util.regex.Pattern;
 import org.appwork.storage.Storable;
 import org.appwork.utils.CompareUtils;
 import org.appwork.utils.Hash;
-import org.appwork.utils.Regex;
 import org.appwork.utils.StringUtils;
 
 /**
@@ -51,8 +51,58 @@ import org.appwork.utils.StringUtils;
  *
  */
 public class HardwareInfoStorable implements Storable {
-    public static final org.appwork.storage.TypeRef<HardwareInfoStorable> TYPE = new org.appwork.storage.TypeRef<HardwareInfoStorable>(HardwareInfoStorable.class) {
-    };
+    public static final org.appwork.storage.TypeRef<HardwareInfoStorable> TYPE             = new org.appwork.storage.TypeRef<HardwareInfoStorable>(HardwareInfoStorable.class) {
+                                                                                           };
+    /**
+     * Use this exclude list to get a hardware id only that does not change even after a windows reinstallation. Please note: the id may
+     * change anyway, especially of a different operating system has been installed.
+     */
+    public static String[]                                                EXCLUDE_FOR_HID  = new String[] {
+            /* captions are translated and may contain version numbers */ "()\\.Caption",
+                                                                                                                                                                                                                                                                                              /*
+                                                                                                                                                                                                                                                                                               * changes
+                                                                                                                                                                                                                                                                                               * with
+                                                                                                                                                                                                                                                                                               * an
+                                                                                                                                                                                                                                                                                               * Bios
+                                                                                                                                                                                                                                                                                               * Update
+                                                                                                                                                                                                                                                                                               */
+            "BIOS\\.BuildNumber",
+                                                                                                                                                                                                                                                                                              /*
+                                                                                                                                                                                                                                                                                               * changes
+                                                                                                                                                                                                                                                                                               * with
+                                                                                                                                                                                                                                                                                               * an
+                                                                                                                                                                                                                                                                                               * Bios
+                                                                                                                                                                                                                                                                                               * Update
+                                                                                                                                                                                                                                                                                               */
+            "BIOS\\.ReleaseDate",
+                                                                                                                                                                                                                                                                                              /*
+                                                                                                                                                                                                                                                                                               * changes
+                                                                                                                                                                                                                                                                                               * with
+                                                                                                                                                                                                                                                                                               * an
+                                                                                                                                                                                                                                                                                               * Bios
+                                                                                                                                                                                                                                                                                               * Update
+                                                                                                                                                                                                                                                                                               */
+            "BIOS\\.SMBIOSMajorVersion",
+                                                                                                                                                                                                                                                                                              /*
+                                                                                                                                                                                                                                                                                               * changes
+                                                                                                                                                                                                                                                                                               * with
+                                                                                                                                                                                                                                                                                               * an
+                                                                                                                                                                                                                                                                                               * Bios
+                                                                                                                                                                                                                                                                                               * Update
+                                                                                                                                                                                                                                                                                               */
+            "BIOS\\.SMBIOSMinorVersion",
+                                                                                                                                                                                                                                                                                              /*
+                                                                                                                                                                                                                                                                                               * changes
+                                                                                                                                                                                                                                                                                               * with
+                                                                                                                                                                                                                                                                                               * an
+                                                                                                                                                                                                                                                                                               * Bios
+                                                                                                                                                                                                                                                                                               * Update
+                                                                                                                                                                                                                                                                                               */
+            "BIOS\\.SMBIOSMinorVersion", "CPU\\.Name", "Windows\\..*", "Network\\.ServiceName", "Network\\.ProductName", "Network\\.Manufacturer", "Devices\\..*" };
+    /**
+     * Keep only operating system ids. these ids probably change if the operating system is updated or reinstalled
+     */
+    public static String[]                                                EXCLUDE_FOR_OSID = new String[] { ".*\\.PNPDeviceID", "CPU\\.Caption", "CPU\\.Name", "Windows\\..*", "Network\\.ServiceName", "Network\\.ProductName", "Network\\.Manufacturer", "Devices\\..*" };
 
     /**
      *
@@ -138,10 +188,26 @@ public class HardwareInfoStorable implements Storable {
     }
 
     public static class Entry implements Storable {
-        private String category;
-        private String key;
-        private String value;
-        private int    index;
+        private String        category;
+        private String        key;
+        private String        value;
+        private int           index;
+        private MayChangeOn[] changeOptions;
+
+        /**
+         * @return the changeOptions
+         */
+        public MayChangeOn[] getChangeOptions() {
+            return changeOptions;
+        }
+
+        /**
+         * @param changeOptions
+         *            the changeOptions to set
+         */
+        public void setChangeOptions(MayChangeOn[] changeOptions) {
+            this.changeOptions = changeOptions;
+        }
 
         /**
          *
@@ -150,11 +216,12 @@ public class HardwareInfoStorable implements Storable {
             // TODO Auto-generated constructor stub
         }
 
-        public Entry(String category, int index, String key, String value) {
+        public Entry(String category, int index, String key, String value, MayChangeOn... changeOptions) {
             this.category = category;
             this.key = key;
             this.value = value;
             this.index = index;
+            this.changeOptions = changeOptions;
         }
 
         /**
@@ -224,33 +291,36 @@ public class HardwareInfoStorable implements Storable {
      * @param key
      * @param value
      */
-    public void add(String category, int index, String key, String value) {
+    public void add(String category, int index, String key, String value, MayChangeOn... mayChangeOns) {
         value = value.replaceAll(Pattern.quote("&amp;"), "&");
         for (Entry e : entries) {
             if (e.category.equals(category) && e.index == index && e.value.equals(value)) {
                 return;
             }
         }
-        if ("PNPDeviceID".equalsIgnoreCase(key) || "DeviceID".equalsIgnoreCase(key)) {
-            // https://www.keysight.com/main/editorial.jspx?ckey=2039700&id=2039700&nid=-11143.0.00&lc=ger&cc=DE
-            String vendor = new Regex(value, "[\\\\;&]VEN_([a-fA-F0-9]+)").getMatch(0);
-            String device = new Regex(value, "[\\\\;&]DEV_([a-fA-F0-9]+)").getMatch(0);
-            String subsys = new Regex(value, "[\\\\;&]SUBSYS_([a-fA-F0-9]+)").getMatch(0);
-            String portType = new Regex(value, "^([^\\\\//]+)").getMatch(0);
-            if (StringUtils.isNotEmpty(portType)) {
-                entries.add(new Entry(category, index, "portType", portType));
-            }
-            if (StringUtils.isNotEmpty(vendor)) {
-                entries.add(new Entry(category, index, "vendorID", vendor));
-            }
-            if (StringUtils.isNotEmpty(device)) {
-                entries.add(new Entry(category, index, "deviceID", device));
-            }
-            if (StringUtils.isNotEmpty(subsys)) {
-                entries.add(new Entry(category, index, "subsysID", subsys));
-            }
-        }
-        entries.add(new Entry(category, index, key, value));
+        // if ("PNPDeviceID".equalsIgnoreCase(key) || "DeviceID".equalsIgnoreCase(key)) {
+        // // https://www.keysight.com/main/editorial.jspx?ckey=2039700&id=2039700&nid=-11143.0.00&lc=ger&cc=DE
+        // String vendor = new Regex(value, "[\\\\;&]VEN_([a-fA-F0-9]+)").getMatch(0);
+        // String device = new Regex(value, "[\\\\;&]DEV_([a-fA-F0-9]+)").getMatch(0);
+        // String subsys = new Regex(value, "[\\\\;&]SUBSYS_([a-fA-F0-9]+)").getMatch(0);
+        // String portType = new Regex(value, "^([^\\\\//]+)").getMatch(0);
+        // if (StringUtils.isNotEmpty(portType)) {
+        // if ("null".equals(portType)) {
+        // System.out.println();
+        // }
+        // entries.add(new Entry(category, index, "portType", portType));
+        // }
+        // if (StringUtils.isNotEmpty(vendor)) {
+        // entries.add(new Entry(category, index, "vendorID", vendor));
+        // }
+        // if (StringUtils.isNotEmpty(device)) {
+        // entries.add(new Entry(category, index, "deviceID", device));
+        // }
+        // if (StringUtils.isNotEmpty(subsys)) {
+        // entries.add(new Entry(category, index, "subsysID", subsys));
+        // }
+        // }
+        entries.add(new Entry(category, index, key, value, mayChangeOns));
     }
 
     /**
@@ -277,7 +347,7 @@ public class HardwareInfoStorable implements Storable {
                 sb.append(StringUtils.fillPost("   " + (e.getIndex() + 1) + ".", "-", maxKey + maxValue + 6)).append("\r\n");
             }
             // https://devicehunt.com/search/type/pci/vendor/5853/device/1003
-            sb.append("   " + StringUtils.fillPost(e.key, " ", maxKey)).append(" = ").append(e.value).append("\r\n");
+            sb.append("   " + StringUtils.fillPost(e.key, " ", maxKey)).append(" = ").append(e.value + " - " + Arrays.toString(e.getChangeOptions())).append("\r\n");
             last = e;
         }
         return sb.toString();

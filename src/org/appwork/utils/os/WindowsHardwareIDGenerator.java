@@ -13,6 +13,19 @@ import org.appwork.console.table.Column;
 import org.appwork.console.table.Renderer;
 import org.appwork.console.table.Table;
 import org.appwork.exceptions.WTFException;
+import org.appwork.hid.WMIProperty;
+import org.appwork.hid.Win32_BIOS;
+import org.appwork.hid.Win32_BaseBoard;
+import org.appwork.hid.Win32_Battery;
+import org.appwork.hid.Win32_CDROMDrive;
+import org.appwork.hid.Win32_ComputerSystem;
+import org.appwork.hid.Win32_ComputerSystemProduct;
+import org.appwork.hid.Win32_DiskDrive;
+import org.appwork.hid.Win32_NetworkAdapter;
+import org.appwork.hid.Win32_PhysicalMemory;
+import org.appwork.hid.Win32_PnPEntity;
+import org.appwork.hid.Win32_Processor;
+import org.appwork.hid.Win32_videocontroller;
 import org.appwork.loggingv3.LogV3;
 import org.appwork.storage.JSonStorage;
 import org.appwork.storage.TypeRef;
@@ -73,7 +86,6 @@ public class WindowsHardwareIDGenerator {
 
     private void appendBattery() throws IOException, InterruptedException {
         CSVContent result = this.wmic("path", "Win32_Battery", "get", "*");
-        String[] fields = new String[] { "Name", "Chemistry", "DeviceID" };
         // http://www.powertheshell.com/reference/wmireference/root/cimv2/win32_battery/
         // $Chemistry_ReturnValue =
         // @{
@@ -86,19 +98,16 @@ public class WindowsHardwareIDGenerator {
         // 7='Zinc air'
         // 8='Lithium Polymer'
         // }
-        result.sort(fields);
         // System.out.println(result);
         for (int i = 0; i < result.size(); i++) {
-            for (String s : fields) {
-                this.add("Battery", result, s, i, i);
+            for (Win32_Battery s : Win32_Battery.values()) {
+                this.add(s.getClass().getSimpleName(), result, s.name(), i, i, ((WMIProperty) s).getChangeOptions());
             }
         }
     }
 
     private void appendSystemEnclosure() throws IOException, InterruptedException {
         CSVContent result = this.wmic("path", "Win32_SystemEnclosure", "get", "*");
-        String[] fields = new String[] { "ChassisTypes", "Manufacturer", "SerialNumber" };
-        result.sort(fields);
         HashMap<Integer, String> mapping = new HashMap<Integer, String>();
         mapping.put(1, "Other");
         mapping.put(2, "Unknown");
@@ -188,9 +197,6 @@ public class WindowsHardwareIDGenerator {
 
     private void appendGraphicsCard() throws IOException, InterruptedException {
         CSVContent result = this.wmic("path", "Win32_videocontroller", "get", "*");
-        String[] fields = new String[] { "AdapterCompatibility", "AdapterDACType", "Caption", "VideoProcessor", "PNPDeviceID" };
-        result.sort(fields);
-        // // System.out.println(result);
         int index = 0;
         HashSet<String> allowedPortTypes = new HashSet<String>();
         allowedPortTypes.add("pci");
@@ -223,8 +229,8 @@ public class WindowsHardwareIDGenerator {
             if (address == null) {
                 continue;
             }
-            for (String s : fields) {
-                this.add("GraphicsCard", result, s, i, index);
+            for (Win32_videocontroller s : Win32_videocontroller.values()) {
+                this.add(s.getClass().getSimpleName(), result, s.name(), i, index, ((WMIProperty) s).getChangeOptions());
             }
             index++;
             // probably given by the os
@@ -235,9 +241,6 @@ public class WindowsHardwareIDGenerator {
     private void appendPnPentity() throws IOException, InterruptedException {
         // https://www.keysight.com/main/editorial.jspx?ckey=2039700&id=2039700&nid=-11143.0.00&lc=ger&cc=DE
         CSVContent result = this.wmic("path", "Win32_PnPEntity", "get", "*");
-        String[] fields = new String[] { "PNPDeviceID", "DeviceID", "Caption", "Manufacturer" };
-        result.sort(fields);
-        // System.out.println(result);
         int index = 0;
         HashSet<String> allowedPortTypes = new HashSet<String>();
         allowedPortTypes.add("pci");
@@ -256,9 +259,8 @@ public class WindowsHardwareIDGenerator {
             if (getAddressByDeviceID(deviceID) == null) {
                 continue;
             }
-            System.out.println(result.get(i));
-            for (String s : fields) {
-                this.add("Devices", result, s, i, index);
+            for (Win32_PnPEntity s : Win32_PnPEntity.values()) {
+                this.add(s.getClass().getSimpleName(), result, s.name(), i, index, ((WMIProperty) s).getChangeOptions());
             }
             index++;
             // probably given by the os
@@ -272,9 +274,6 @@ public class WindowsHardwareIDGenerator {
 
     private void appendNetwork() throws IOException, InterruptedException {
         CSVContent result = this.wmic("nic", "get", "*");
-        String[] fields = new String[] { "ProductName", "Manufacturer", "PNPDeviceID", "MACAddress" };
-        result.sort(fields);
-        // System.out.println(result);
         int index = 0;
         HashSet<String> allowedPortTypes = new HashSet<String>();
         allowedPortTypes.add("pci");
@@ -294,8 +293,8 @@ public class WindowsHardwareIDGenerator {
             if (getAddressByDeviceID(deviceID) == null) {
                 continue;
             }
-            for (String s : fields) {
-                this.add("Network", result, s, i, index);
+            for (Win32_NetworkAdapter s : Win32_NetworkAdapter.values()) {
+                this.add(s.getClass().getSimpleName(), result, s.name(), i, index, ((WMIProperty) s).getChangeOptions());
             }
             index++;
             // probably given by the os
@@ -328,32 +327,26 @@ public class WindowsHardwareIDGenerator {
 
     private void appendCSProduct() throws IOException, InterruptedException {
         CSVContent result = this.wmic("csproduct", "get", "*");
-        String[] fields = new String[] { "Name", "UUID", "Vendor", "Version" };
-        result.sort(fields);
         // System.out.println(result);
         for (int i = 0; i < result.size(); i++) {
-            for (String s : fields) {
-                this.add("CSProduct", result, s, i, i);
+            for (Win32_ComputerSystemProduct s : Win32_ComputerSystemProduct.values()) {
+                this.add(s.getClass().getSimpleName(), result, s.name(), i, i, ((WMIProperty) s).getChangeOptions());
             }
         }
     }
 
     private void appendBios() throws IOException, InterruptedException {
         CSVContent result = this.wmic("bios", "get", "*");
-        String[] fields = new String[] { "Caption", "Manufacturer", "Name", "SerialNumber" };
-        result.sort(fields);
         // System.out.println(result);
         for (int i = 0; i < result.size(); i++) {
-            for (String s : fields) {
-                this.add("Bios", result, s, i, i);
+            for (Win32_BIOS s : Win32_BIOS.values()) {
+                this.add(s.getClass().getSimpleName(), result, s.name(), i, i, ((WMIProperty) s).getChangeOptions());
             }
         }
     }
 
     private void appendCDRom() throws IOException, InterruptedException {
         CSVContent result = this.wmic("cdrom", "get", "*");
-        String[] fields = new String[] { "DeviceID", "PNPDeviceID", "Name", "SerialNumber" };
-        result.sort(fields);
         // System.out.println(result);
         int index = 0;
         HashSet<String> allowedPortTypes = new HashSet<String>();
@@ -382,8 +375,8 @@ public class WindowsHardwareIDGenerator {
             if ("unknown".equalsIgnoreCase(result.get("MediaType", i))) {
                 continue;
             }
-            for (String s : fields) {
-                this.add("CDRom", result, s, i, index);
+            for (Win32_CDROMDrive s : Win32_CDROMDrive.values()) {
+                this.add(s.getClass().getSimpleName(), result, s.name(), i, index, ((WMIProperty) s).getChangeOptions());
             }
             index++;
         }
@@ -392,15 +385,13 @@ public class WindowsHardwareIDGenerator {
     private void appendbaseBoard() throws IOException, InterruptedException {
         CSVContent result = this.wmic("baseboard", "get", "*");
         // System.out.println(result);
-        String[] fields = new String[] { "Manufacturer", "Product", "SerialNumber", "Version" };
-        result.sort(fields);
         int index = 0;
         for (int i = 0; i < result.size(); i++) {
             if (isVirtualHardware(result.get(i))) {
                 continue;
             }
-            for (String s : fields) {
-                this.add("BaseBoard", result, s, i, index);
+            for (Win32_BaseBoard s : Win32_BaseBoard.values()) {
+                this.add(Win32_BaseBoard.class.getSimpleName(), result, s.name(), i, index, ((WMIProperty) s).getChangeOptions());
             }
             index++;
         }
@@ -409,8 +400,6 @@ public class WindowsHardwareIDGenerator {
     private void appendDiskDrive() throws IOException, InterruptedException {
         CSVContent result = this.wmic("diskdrive", "get", "*");
         // System.out.println(result);
-        String[] fields = new String[] { "Caption", "FirmwareRevision", "Model", "SerialNumber", "Size" };
-        result.sort(fields);
         int index = 0;
         HashSet<String> allowedPortTypes = new HashSet<String>();
         allowedPortTypes.add("pci");
@@ -436,8 +425,8 @@ public class WindowsHardwareIDGenerator {
             if (!StringUtils.containsIgnoreCase(result.get("MediaType", i), "fixed")) {
                 continue;
             }
-            for (String s : fields) {
-                this.add("DiskDrive", result, s, i, index);
+            for (Win32_DiskDrive s : Win32_DiskDrive.values()) {
+                this.add(s.getClass().getSimpleName(), result, s.name(), i, index, ((WMIProperty) s).getChangeOptions());
             }
             index++;
         }
@@ -461,24 +450,19 @@ public class WindowsHardwareIDGenerator {
 
     private void appendCPU() throws IOException, InterruptedException {
         CSVContent result = this.wmic("cpu", "get", "*");
-        String[] fields = new String[] { "Caption", "Name", "NumberOfLogicalProcessors", "ProcessorId", "Revision", "Version" };
-        result.sort(fields);
         // System.out.println(result);
         for (int i = 0; i < result.size(); i++) {
-            for (String s : fields) {
-                this.add("CPU", result, s, i, i);
+            for (Win32_Processor s : Win32_Processor.values()) {
+                this.add(s.getClass().getSimpleName(), result, s.name(), i, i, ((WMIProperty) s).getChangeOptions());
             }
         }
     }
 
     private void appendComputerSystem() throws IOException, InterruptedException {
         CSVContent result = this.wmic("computersystem", "get", "*");
-        String[] fields = new String[] { "Manufacturer", "Model", "SystemType", "OEMLogoBitmap", "OEMStringArray" };
-        result.sort(fields);
-        // System.out.println(result);
         for (int i = 0; i < result.size(); i++) {
-            for (String s : fields) {
-                this.add("ComputerSystem", result, s, i, i);
+            for (Win32_ComputerSystem s : Win32_ComputerSystem.values()) {
+                this.add(s.getClass().getSimpleName(), result, s.name(), i, i, ((WMIProperty) s).getChangeOptions());
             }
         }
     }
@@ -492,22 +476,20 @@ public class WindowsHardwareIDGenerator {
         return data;
     }
 
-    private void add(String category, CSVContent result, String key, int i, int index) {
+    private void add(String category, CSVContent result, String key, int i, int index, MayChangeOn... mayChangeOns) {
         String value = String.valueOf(result.get(key, i));
         if (StringUtils.isEmpty(value)) {
             return;
         }
-        this.data.add(category, index, key, value);
+        this.data.add(category, index, key, value, mayChangeOns);
     }
 
     protected void appendRAM() throws IOException, InterruptedException {
         CSVContent result = this.wmic("memorychip", "get", "*");
-        String[] fields = new String[] { "BankLabel", "Capacity", "DeviceLocator", "SerialNumber", "Tag", "TypDetail" };
-        result.sort(fields);
         // System.out.println(result);
         for (int i = 0; i < result.size(); i++) {
-            for (String s : fields) {
-                this.add("RAM", result, s, i, i);
+            for (Win32_PhysicalMemory s : Win32_PhysicalMemory.values()) {
+                this.add(s.getClass().getSimpleName(), result, s.name(), i, i, ((WMIProperty) s).getChangeOptions());
             }
         }
     }
