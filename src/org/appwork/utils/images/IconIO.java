@@ -187,16 +187,16 @@ public class IconIO {
             @Override
             public final int filterRGB(final int x, final int y, final int rgb) {
                 final int r = (rgb & 0xFF0000) >> 16;
-        final int g = (rgb & 0xFF00) >> 8;
-        final int b = rgb & 0xFF;
-        if (r >= r1 && r <= r2 && g >= g1 && g <= g2 && b >= b1 && b <= b2) {
-            // Set fully transparent but keep color
-            // calculate a alpha value based on the distance between the
-            // range borders and the pixel color
-            final int dist = (Math.abs(r - (r1 + r2) / 2) + Math.abs(g - (g1 + g2) / 2) + Math.abs(b - (b1 + b2) / 2)) * 2;
-            return new Color(r, g, b, Math.min(255, dist)).getRGB();
-        }
-        return rgb;
+                final int g = (rgb & 0xFF00) >> 8;
+                final int b = rgb & 0xFF;
+                if (r >= r1 && r <= r2 && g >= g1 && g <= g2 && b >= b1 && b <= b2) {
+                    // Set fully transparent but keep color
+                    // calculate a alpha value based on the distance between the
+                    // range borders and the pixel color
+                    final int dist = (Math.abs(r - (r1 + r2) / 2) + Math.abs(g - (g1 + g2) / 2) + Math.abs(b - (b1 + b2) / 2)) * 2;
+                    return new Color(r, g, b, Math.min(255, dist)).getRGB();
+                }
+                return rgb;
             }
         };
         final ImageProducer ip = new FilteredImageSource(image.getSource(), filter);
@@ -466,29 +466,20 @@ public class IconIO {
         return IconIO.getScaledInstance(img, width, height, Interpolation.BICUBIC, true);
     }
 
-    /**
-     * Taken from http://today.java.net/pub/a/today/2007/04/03/perils-of-image- getscaledinstance.html License: unknown Convenience method
-     * that returns a scaled instance of the provided {@code BufferedImage}.
-     *
-     * @param img
-     *            the original image to be scaled
-     * @param targetWidth
-     *            the desired width of the scaled instance, in pixels
-     * @param targetHeight
-     *            the desired height of the scaled instance, in pixels
-     * @param hint
-     * @param higherQuality
-     *            if true, this method will use a multi-step scaling technique that provides higher quality than the usual one-step
-     *            technique (only useful in downscaling cases, where {@code targetWidth} or {@code targetHeight} is smaller than the
-     *            original dimensions, and generally only when the {@code BILINEAR} hint is specified)
-     * @return a scaled version of the original {@code BufferedImage}
-     */
-    public static BufferedImage getScaledInstance(final Image img, int width, int height, final Interpolation interpolation, final boolean higherQuality) {
+    public static BufferedImage getScaledInstance(final Image img, int width, int height, final Interpolation interpolation, final boolean higherQuality, boolean keepratio) {
         final double faktor = Math.max((double) img.getWidth(null) / width, (double) img.getHeight(null) / height);
-        width = Math.max((int) (img.getWidth(null) / faktor), 1);
-        height = Math.max((int) (img.getHeight(null) / faktor), 1);
-        if (faktor == 1.0 && img instanceof BufferedImage) {
-            return (BufferedImage) img;
+        if (keepratio) {
+            width = Math.max((int) (img.getWidth(null) / faktor), 1);
+            height = Math.max((int) (img.getHeight(null) / faktor), 1);
+            if (faktor == 1.0 && img instanceof BufferedImage) {
+                return (BufferedImage) img;
+            }
+        } else {
+            if (img instanceof BufferedImage) {
+                if (height == img.getHeight(null) && width == img.getWidth(null)) {
+                    return (BufferedImage) img;
+                }
+            }
         }
         Image ret = img;
         int w, h;
@@ -537,6 +528,27 @@ public class IconIO {
             ret = tmp;
         } while (w != width || h != height);
         return (BufferedImage) ret;
+    }
+
+    /**
+     * Taken from http://today.java.net/pub/a/today/2007/04/03/perils-of-image- getscaledinstance.html License: unknown Convenience method
+     * that returns a scaled instance of the provided {@code BufferedImage}.
+     *
+     * @param img
+     *            the original image to be scaled
+     * @param targetWidth
+     *            the desired width of the scaled instance, in pixels
+     * @param targetHeight
+     *            the desired height of the scaled instance, in pixels
+     * @param hint
+     * @param higherQuality
+     *            if true, this method will use a multi-step scaling technique that provides higher quality than the usual one-step
+     *            technique (only useful in downscaling cases, where {@code targetWidth} or {@code targetHeight} is smaller than the
+     *            original dimensions, and generally only when the {@code BILINEAR} hint is specified)
+     * @return a scaled version of the original {@code BufferedImage}
+     */
+    public static BufferedImage getScaledInstance(final Image img, int width, int height, final Interpolation interpolation, final boolean higherQuality) {
+        return getScaledInstance(img, width, height, interpolation, higherQuality, true);
     }
 
     /**

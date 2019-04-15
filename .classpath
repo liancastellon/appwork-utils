@@ -27,6 +27,6 @@
 	<classpathentry kind="lib" path="libs/svgSalamander.jar"/>
 	<classpathentry kind="lib" path="libs/jackson-annotations.jar"/>
 	<classpathentry kind="lib" path="libs/jackson-core.jar"/>
-	<classpathentry kind="lib" path="libs/jackson-databind.jar"/>
+	<classpathentry kind="lib" path="libs/jackson-databind.jar" sourcepath="C:/Users/Thomas/AppData/Local/Temp/decompiler/source/jackson-databind-2.7.9.3-sources.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
