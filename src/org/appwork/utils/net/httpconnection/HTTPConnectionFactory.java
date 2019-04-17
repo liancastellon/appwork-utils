@@ -39,25 +39,20 @@ public class HTTPConnectionFactory {
     public static HTTPConnection createHTTPConnection(final URL url, final HTTPProxy proxy) {
         if (proxy == null) {
             return new HTTPConnectionImpl(url);
-        }
-        if (proxy.isPreferNativeImplementation()) {
+        } else if (proxy.isPreferNativeImplementation()) {
             return new NativeHTTPConnectionImpl(url, proxy);
-        }
-        if (proxy.isNone() || proxy.isDirect()) {
+        } else if (proxy.isNone() || proxy.isDirect()) {
             return new HTTPConnectionImpl(url, proxy);
-        }
-        if (proxy.getType().equals(HTTPProxy.TYPE.SOCKS5)) {
+        } else if (proxy.getType().equals(HTTPProxy.TYPE.SOCKS5)) {
             return new Socks5HTTPConnectionImpl(url, proxy);
-        }
-        if (proxy.getType().equals(HTTPProxy.TYPE.SOCKS4)) {
+        } else if (proxy.getType().equals(HTTPProxy.TYPE.SOCKS4)) {
             return new Socks4HTTPConnectionImpl(url, proxy);
-        }
-        if (proxy.getType().equals(HTTPProxy.TYPE.HTTP)) {
+        } else if (proxy.getType().equals(HTTPProxy.TYPE.HTTP)) {
             return new HTTPProxyHTTPConnectionImpl(url, proxy);
-        }
-        if (proxy.getType().equals(HTTPProxy.TYPE.HTTPS)) {
+        } else if (proxy.getType().equals(HTTPProxy.TYPE.HTTPS)) {
             return new HTTPProxyHTTPConnectionImpl(url, proxy);
+        } else {
+            throw new RuntimeException("unsupported proxy type: " + proxy.getType().name());
         }
-        throw new RuntimeException("unsupported proxy type: " + proxy.getType().name());
     }
 }
