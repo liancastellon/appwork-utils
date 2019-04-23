@@ -50,7 +50,7 @@ public class NonInterruptibleThread extends Thread {
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see java.lang.Thread#start()
      */
     @Override
@@ -91,8 +91,10 @@ public class NonInterruptibleThread extends Thread {
                 Thread.currentThread().interrupt();
             }
             if (exception.get() != null) {
+                // suppressed exception includes stacktrace to execute calling stacktrace
                 throw Exceptions.addSuppressed(exception.get(), new Exception());
             } else if (runtimeException.get() != null) {
+                // suppressed exception includes stacktrace to execute calling stacktrace
                 throw Exceptions.addSuppressed(runtimeException.get(), new Exception());
             } else {
                 return ret.get();
