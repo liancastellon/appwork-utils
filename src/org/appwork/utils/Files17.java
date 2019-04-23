@@ -105,8 +105,21 @@ public class Files17 {
                         LogV3.logger(Files17.class).info("guessRoot:" + file + "|getFileStores|duration:" + (System.currentTimeMillis() - startTimeStamp2));
                     }
                     for (final FileStore fileStore : fileStores) {
-                        if (fileStore.equals(fileFileStore)) {
-                            final Path fileStorePath = getPath(fileStore);
+                        final boolean equalsFlag;
+                        final long equalsTimeStamp = System.currentTimeMillis();
+                        try {
+                            equalsFlag = fileStore.equals(fileFileStore);
+                        } finally {
+                            LogV3.logger(Files17.class).info("guessRoot:" + file + "|equals:" + fileStore + "<->" + fileFileStore + "|duration:" + (System.currentTimeMillis() - equalsTimeStamp));
+                        }
+                        if (equalsFlag) {
+                            final long getPathTimeStamp = System.currentTimeMillis();
+                            final Path fileStorePath;
+                            try {
+                                fileStorePath = getPath(fileStore);
+                            } finally {
+                                LogV3.logger(Files17.class).info("guessRoot:" + file + "|getPath:" + fileStore + "|duration:" + (System.currentTimeMillis() - getPathTimeStamp));
+                            }
                             if (fileStorePath != null) {
                                 LogV3.logger(Files17.class).info("guessRoot:" + file + "|root:" + fileStorePath + "|duration:" + (System.currentTimeMillis() - startTimeStamp));
                                 return fileStorePath.toFile();
