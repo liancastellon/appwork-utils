@@ -33,7 +33,16 @@
  * ==================================================================================================================================================== */
 package org.appwork.utils;
 
-import java.util.concurrent.atomic.AtomicReference;
+import java.nio.channels.ClosedByInterruptException;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
+import org.appwork.loggingv3.LogV3;
 
 /**
  * @author daniel
@@ -41,68 +50,87 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  */
 public class NonInterruptibleThread extends Thread {
-    public static interface NonInterruptibleRunnable<T, V extends Exception> {
-        public T run() throws V;
+    protected NonInterruptibleThread(Runnable r) {
+        super(r, "NonInterruptibleThread " + System.currentTimeMillis());
     }
 
-    protected NonInterruptibleThread() {
-    }
+    private static final ThreadPoolExecutor POOL = new ThreadPoolExecutor(0, Integer.MAX_VALUE, 15, TimeUnit.SECONDS, new SynchronousQueue<Runnable>(), new ThreadFactory() {
+        @Override
+        public Thread newThread(Runnable r) {
+            return new NonInterruptibleThread(r);
+        }
+    });
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see java.lang.Thread#start()
-     */
-    @Override
-    public synchronized void start() {
-        super.start();
-    }
-
+    @SuppressWarnings("unchecked")
     public static <T, E extends Exception> T execute(final NonInterruptibleRunnable<T, E> run) throws E {
         if (Thread.currentThread() instanceof NonInterruptibleThread) {
-            return run.run();
+            try {
+                return run.run();
+            } catch (InterruptedException e) {
+                LogV3.defaultLogger().exception("InterruptException in NonInterruptable Thread. This must not happen!", e);
+                // this actually cannot happen! since the thread cannot get interrupted. The only way this could happen, if the process
+                // throws a InterruptedException without the thread beeing interrupted
+                throw new IllegalStateException(e);
+            }
         } else {
-            final AtomicReference<T> ret = new AtomicReference<T>();
-            final AtomicReference<E> exception = new AtomicReference<E>();
-            final AtomicReference<RuntimeException> runtimeException = new AtomicReference<RuntimeException>();
-            final Thread thread = new NonInterruptibleThread() {
+            Future<T> fut = POOL.submit(new Callable<T>() {
                 @Override
-                public void run() {
+                public T call() throws Exception {
                     try {
-                        ret.set(run.run());
-                    } catch (RuntimeException e) {
-                        runtimeException.set(e);
-                    } catch (Exception e) {
-                        exception.set((E) e);
+                        return run.run();
+                    } catch (InterruptedException e) {
+                        LogV3.defaultLogger().exception("InterruptException in NonInterruptable Thread. This must not happen!", e);
+                        // this actually cannot happen! since the thread cannot get interrupted. The only way this could happen, if the
+                        // process
+                        // throws a InterruptedException without the thread beeing interrupted
+                        throw new IllegalStateException(e);
                     }
                 }
-            };
-            thread.start();
+            });
             boolean interruptedFlag = false;
-            while (true) {
-                try {
-                    thread.join();
-                    break;
-                } catch (InterruptedException e) {
-                    interruptedFlag = true;
+            try {
+                while (true) {
+                    try {
+                        return fut.get();
+                    } catch (InterruptedException e) {
+                        interruptedFlag = true;
+                    } catch (ExecutionException e) {
+                        if (Exceptions.isCausedBy(e, InterruptedException.class, ClosedByInterruptException.class)) {
+                            LogV3.defaultLogger().exception("InterruptException in NonInterruptable Thread. This must not happen!", e);
+                            // this actually cannot happen! since the thread cannot get interrupted. The only way this could happen, if the
+                            // process
+                            // throws a InterruptedException without the thread being interrupted
+                            throw new IllegalStateException(e);
+                        }
+                        if (e.getCause() instanceof RuntimeException) {
+                            throw Exceptions.addSuppressed((RuntimeException) e.getCause(), new Exception());
+                        } else {
+                            throw Exceptions.addSuppressed((E) e.getCause(), new Exception());
+                        }
+                    }
                 }
-            }
-            if (interruptedFlag) {
-                Thread.currentThread().interrupt();
-            }
-            if (exception.get() != null) {
-                // suppressed exception includes stacktrace to execute calling stacktrace
-                throw Exceptions.addSuppressed(exception.get(), new Exception());
-            } else if (runtimeException.get() != null) {
-                // suppressed exception includes stacktrace to execute calling stacktrace
-                throw Exceptions.addSuppressed(runtimeException.get(), new Exception());
-            } else {
-                return ret.get();
+            } finally {
+                if (interruptedFlag) {
+                    Thread.currentThread().interrupt();
+                }
             }
         }
     }
 
     @Override
     public void interrupt() {
+    }
+
+    /**
+     * @param runnable
+     */
+    public static void execute(final Runnable runnable) {
+        execute(new NonInterruptibleRunnable<Void, RuntimeException>() {
+            @Override
+            public Void run() throws RuntimeException {
+                runnable.run();
+                return null;
+            }
+        });
     }
 }
