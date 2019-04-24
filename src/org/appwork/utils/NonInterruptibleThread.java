@@ -51,7 +51,7 @@ import org.appwork.loggingv3.LogV3;
  */
 public class NonInterruptibleThread extends Thread {
     protected NonInterruptibleThread(Runnable r) {
-        super(r, "NonInterruptibleThread " + System.currentTimeMillis());
+        super(r, "NonInterruptibleThread_" + System.currentTimeMillis());
     }
 
     private static final ThreadPoolExecutor POOL = new ThreadPoolExecutor(0, Integer.MAX_VALUE, 15, TimeUnit.SECONDS, new SynchronousQueue<Runnable>(), new ThreadFactory() {
@@ -60,6 +60,20 @@ public class NonInterruptibleThread extends Thread {
             return new NonInterruptibleThread(r);
         }
     });
+
+    private static final StackTraceElement getCaller(final Throwable throwable) {
+        if (throwable != null && throwable.getStackTrace() != null) {
+            final StackTraceElement[] stackTrace = throwable.getStackTrace();
+            for (final StackTraceElement stack : stackTrace) {
+                if (NonInterruptibleThread.class.getName().equals(stack.getClassName())) {
+                    continue;
+                } else {
+                    return stack;
+                }
+            }
+        }
+        return null;
+    }
 
     @SuppressWarnings("unchecked")
     public static <T, E extends Exception> T execute(final NonInterruptibleRunnable<T, E> run) throws E {
@@ -73,10 +87,17 @@ public class NonInterruptibleThread extends Thread {
                 throw new IllegalStateException(e);
             }
         } else {
-            Future<T> fut = POOL.submit(new Callable<T>() {
+            final Throwable caller = new Exception().fillInStackTrace();
+            final StackTraceElement callerMethod = getCaller(caller);
+            final Future<T> fut = POOL.submit(new Callable<T>() {
                 @Override
                 public T call() throws Exception {
                     try {
+                        if (callerMethod != null) {
+                            Thread.currentThread().setName("NonInterruptibleThread:" + callerMethod.getClassName() + "(" + callerMethod.getMethodName() + ":" + callerMethod.getLineNumber() + ")");
+                        } else {
+                            Thread.currentThread().setName("NonInterruptibleThread:Active");
+                        }
                         return run.run();
                     } catch (InterruptedException e) {
                         LogV3.defaultLogger().exception("InterruptException in NonInterruptable Thread. This must not happen!", e);
@@ -84,6 +105,8 @@ public class NonInterruptibleThread extends Thread {
                         // process
                         // throws a InterruptedException without the thread beeing interrupted
                         throw new IllegalStateException(e);
+                    } finally {
+                        Thread.currentThread().setName("NonInterruptibleThread:Idle");
                     }
                 }
             });
@@ -95,7 +118,7 @@ public class NonInterruptibleThread extends Thread {
                     } catch (InterruptedException e) {
                         interruptedFlag = true;
                     } catch (ExecutionException e) {
-                        if (Exceptions.isCausedBy(e, InterruptedException.class, ClosedByInterruptException.class)) {
+                        if (Exceptions.containsInstanceOf(e, InterruptedException.class, ClosedByInterruptException.class)) {
                             LogV3.defaultLogger().exception("InterruptException in NonInterruptable Thread. This must not happen!", e);
                             // this actually cannot happen! since the thread cannot get interrupted. The only way this could happen, if the
                             // process
@@ -103,9 +126,9 @@ public class NonInterruptibleThread extends Thread {
                             throw new IllegalStateException(e);
                         }
                         if (e.getCause() instanceof RuntimeException) {
-                            throw Exceptions.addSuppressed((RuntimeException) e.getCause(), new Exception());
+                            throw Exceptions.addSuppressed((RuntimeException) e.getCause(), caller);
                         } else {
-                            throw Exceptions.addSuppressed((E) e.getCause(), new Exception());
+                            throw Exceptions.addSuppressed((E) e.getCause(), caller);
                         }
                     }
                 }
