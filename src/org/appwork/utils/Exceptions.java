@@ -258,4 +258,31 @@ public class Exceptions {
         sourceString += "." + source.getMethodName();
         return sourceString;
     }
+
+    /**
+     * if e is caused by a instance of T, throw the cause
+     *
+     * @param e
+     * @param class1
+     */
+    public static <T extends Throwable> void throwIfFound(Throwable e, Class<T> class1) throws T {
+        T instance = getInstanceof(e, class1);
+        if (instance != null) {
+            throw instance;
+        }
+    }
+
+    /**
+     * @param e
+     * @param class1
+     * @return
+     */
+    public static boolean isCausedBy(Throwable e, Class<? extends Throwable>... types) {
+        for (Class<? extends Throwable> t : types) {
+            if (getInstanceof(e, t) != null) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
