@@ -205,7 +205,7 @@ public class JSonStorage {
             if (Map.class.isAssignableFrom(type)) {
                 return;
             }
-            if (HashSet.class.isAssignableFrom(type)) {
+            if (Set.class.isAssignableFrom(type)) {
                 return;
             }
             if (Storable.class.isAssignableFrom(type)) {
