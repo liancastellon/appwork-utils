@@ -88,7 +88,7 @@ public class NonInterruptibleThread extends Thread {
             }
         } else {
             final Throwable caller = new Exception().fillInStackTrace();
-            final StackTraceElement callerMethod = getCaller(caller);
+            final StackTraceElement callerMethod = DebugMode.TRUE_IN_IDE_ELSE_FALSE ? getCaller(caller) : null;
             final Future<T> fut = POOL.submit(new Callable<T>() {
                 @Override
                 public T call() throws Exception {
