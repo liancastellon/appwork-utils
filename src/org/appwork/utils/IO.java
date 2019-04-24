@@ -74,14 +74,38 @@ public class IO {
         META_AND_DATA
     }
 
+    /**
+     * does NOT create the parent
+     * 
+     * @param in
+     * @param out
+     * @throws IOException
+     */
     public static void copyFile(final File in, final File out) throws IOException {
         IO.copyFile(in, out, null);
     }
 
+    /**
+     * does NOT create the parent
+     * 
+     * @param in
+     * @param out
+     * @param sync
+     * @throws IOException
+     */
     public static void copyFile(final File in, final File out, final SYNC sync) throws IOException {
         IO.copyFile(null, in, out, sync);
     }
 
+    /**
+     * does NOT create the parent
+     * 
+     * @param progress
+     * @param in
+     * @param out
+     * @param sync
+     * @throws IOException
+     */
     public static void copyFile(ProgressFeedback progress, final File in, final File out, final SYNC sync) throws IOException {
         FileInputStream fis = null;
         FileOutputStream fos = null;
@@ -535,6 +559,8 @@ public class IO {
     }
 
     /**
+     * This method autocreates the parent
+     *
      * @param file
      * @param bytes
      * @param none
@@ -544,6 +570,14 @@ public class IO {
         IO.secureWrite(file, bytes, SYNC.META_AND_DATA);
     }
 
+    /**
+     * This method autocreates the parent
+     *
+     * @param file
+     * @param bytes
+     * @param sync
+     * @throws IOException
+     */
     public static void secureWrite(final File file, final byte[] bytes, final SYNC sync) throws IOException {
         secureWrite(file, new WriteToFileCallback() {
             @Override
@@ -561,43 +595,53 @@ public class IO {
         }, sync);
     }
 
+    /**
+     * This method autocreates the parent
+     *
+     * @param dstFile
+     * @param writeToFileCallback
+     * @param sync
+     * @throws IOException
+     */
     public static void secureWrite(final File dstFile, final WriteToFileCallback writeToFileCallback, final SYNC sync) throws IOException {
-        final File tmpFile = new File(dstFile.getAbsolutePath() + ".bac");
-        if (dstFile.getParentFile().exists() == false) {
-            dstFile.getParentFile().mkdirs();
-        }
-        if (tmpFile.exists() && !tmpFile.delete()) {
-            throw new IOException("could not remove tmpFile" + tmpFile);
-        }
-        boolean finallyDeleteFileFlag = true;
-        try {
-            IO.writeToFile(tmpFile, writeToFileCallback, sync);
-            if (dstFile.exists() && dstFile.delete() == false) {
-                throw new IOException("could not remove dstFile" + dstFile);
-            }
-            final long timeStamp = System.currentTimeMillis();
-            int retry = 0;
-            while (!tmpFile.renameTo(dstFile)) {
-                retry++;
+        new NonInterruptibleRunnableException<IOException>() {
+            @Override
+            protected void execute() throws IOException, InterruptedException {
+                final File tmpFile = new File(dstFile.getAbsolutePath() + ".bac");
+                if (dstFile.getParentFile().exists() == false) {
+                    dstFile.getParentFile().mkdirs();
+                }
+                if (tmpFile.exists() && !tmpFile.delete()) {
+                    throw new IOException("could not remove tmpFile" + tmpFile);
+                }
+                boolean finallyDeleteFileFlag = true;
                 try {
-                    Thread.sleep(retry * 10);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new IOException("interrupt during write not rename " + tmpFile + " to " + dstFile.exists(), e);
-                }
-                if (System.currentTimeMillis() - timeStamp > 1000) {
-                    throw new IOException("could not rename " + tmpFile + " to " + dstFile.exists());
+                    IO.writeToFile(tmpFile, writeToFileCallback, sync);
+                    if (dstFile.exists() && dstFile.delete() == false) {
+                        throw new IOException("could not remove dstFile" + dstFile);
+                    }
+                    final long timeStamp = System.currentTimeMillis();
+                    int retry = 0;
+                    while (!tmpFile.renameTo(dstFile)) {
+                        retry++;
+                        Thread.sleep(retry * 10);
+                        if (System.currentTimeMillis() - timeStamp > 1000) {
+                            throw new IOException("could not rename " + tmpFile + " to " + dstFile.exists());
+                        }
+                    }
+                    finallyDeleteFileFlag = false;
+                } finally {
+                    if (finallyDeleteFileFlag) {
+                        tmpFile.delete();
+                    }
                 }
             }
-            finallyDeleteFileFlag = false;
-        } finally {
-            if (finallyDeleteFileFlag) {
-                tmpFile.delete();
-            }
-        }
+        }.startAndWait();
     }
 
     /**
+     * This method autocreates the parent
+     *
      * @param latestTimestampFile
      * @param serializeToJson
      * @param none
@@ -617,14 +661,36 @@ public class IO {
     public static void setErrorHandler(final IOErrorHandler handler) {
     }
 
+    /**
+     * This methods does NOT create the parent but throws an exception if the arent of file does not exist
+     *
+     * @param file
+     * @param string
+     * @throws IOException
+     */
     public static void writeStringToFile(final File file, final String string) throws IOException {
         IO.writeStringToFile(file, string, false, SYNC.META_AND_DATA);
     }
 
+    /**
+     * This methods does NOT create the parent but throws an exception if the arent of file does not exist
+     *
+     * @param file
+     * @param string
+     * @param append
+     * @throws IOException
+     */
     public static void writeStringToFile(final File file, final String string, final boolean append) throws IOException {
         IO.writeStringToFile(file, string, append, SYNC.META_AND_DATA);
     }
 
+    /**
+     * This methods does NOT create the parent but throws an exception if the arent of file does not exist
+     *
+     * @param file
+     * @param data
+     * @throws IOException
+     */
     public static void writeToFile(final File file, final byte[] data) throws IOException {
         IO.writeToFile(file, data, SYNC.META_AND_DATA);
     }
@@ -637,6 +703,14 @@ public class IO {
         public void onClosed();
     }
 
+    /**
+     * This methods does NOT create the parent but throws an exception if the arent of file does not exist
+     *
+     * @param file
+     * @param data
+     * @param sync
+     * @throws IOException
+     */
     public static void writeToFile(final File file, final byte[] data, final SYNC sync) throws IOException {
         writeToFile(file, new WriteToFileCallback() {
             @Override
@@ -654,6 +728,15 @@ public class IO {
         }, sync);
     }
 
+    /**
+     * This methods does NOT create the parent but throws an exception if the arent of file does not exist
+     *
+     * @param file
+     * @param string
+     * @param append
+     * @param sync
+     * @throws IOException
+     */
     public static void writeStringToFile(final File file, final String string, final boolean append, final SYNC sync) throws IOException {
         if (file == null) {
             throw new IllegalArgumentException("File is null.");
@@ -702,6 +785,14 @@ public class IO {
         }
     }
 
+    /**
+     * This methods does NOT create the parent but throws an exception if the arent of file does not exist
+     *
+     * @param file
+     * @param writeToFileCallback
+     * @param sync
+     * @throws IOException
+     */
     public static void writeToFile(final File file, final WriteToFileCallback writeToFileCallback, final SYNC sync) throws IOException {
         if (file == null) {
             throw new IllegalArgumentException("File is null.");
