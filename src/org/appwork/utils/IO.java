@@ -76,7 +76,7 @@ public class IO {
 
     /**
      * does NOT create the parent
-     * 
+     *
      * @param in
      * @param out
      * @throws IOException
@@ -87,7 +87,7 @@ public class IO {
 
     /**
      * does NOT create the parent
-     * 
+     *
      * @param in
      * @param out
      * @param sync
@@ -99,7 +99,7 @@ public class IO {
 
     /**
      * does NOT create the parent
-     * 
+     *
      * @param progress
      * @param in
      * @param out
@@ -611,13 +611,13 @@ public class IO {
                 if (dstFile.getParentFile().exists() == false) {
                     dstFile.getParentFile().mkdirs();
                 }
-                if (tmpFile.exists() && !tmpFile.delete()) {
+                if (!tmpFile.delete() && tmpFile.exists()) {
                     throw new IOException("could not remove tmpFile" + tmpFile);
                 }
                 boolean finallyDeleteFileFlag = true;
                 try {
                     IO.writeToFile(tmpFile, writeToFileCallback, sync);
-                    if (dstFile.exists() && dstFile.delete() == false) {
+                    if (!dstFile.delete() && dstFile.exists()) {
                         throw new IOException("could not remove dstFile" + dstFile);
                     }
                     final long timeStamp = System.currentTimeMillis();
