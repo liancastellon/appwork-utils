@@ -49,8 +49,7 @@ public abstract class NonInterruptibleRunnableReturn<T> extends NonInterruptible
      */
     @Override
     public T run() throws RuntimeException, InterruptedException {
-        this.execute();
-        return null;
+        return this.execute();
     }
 
     /**
