@@ -288,7 +288,7 @@ public abstract class LogSourceProvider {
      */
     public LogSource getCurrentClassLogger() {
         Throwable e = null;
-        final Throwable stackTrace = new Throwable().fillInStackTrace();
+        final Throwable stackTrace = new Throwable();
         try {
             for (final StackTraceElement element : stackTrace.getStackTrace()) {
                 final String currentClassName = element.getClassName();

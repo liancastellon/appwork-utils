@@ -47,7 +47,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public abstract class DelayedRunnable implements Runnable {
     public static String getCaller() {
-        final Throwable stackTrace = new Throwable().fillInStackTrace();
+        final Throwable stackTrace = new Throwable();
         try {
             for (final StackTraceElement element : stackTrace.getStackTrace()) {
                 final String currentClassName = element.getClassName();

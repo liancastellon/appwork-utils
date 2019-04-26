@@ -279,7 +279,7 @@ public class IconIO {
                     return ret;
                 }
             } catch (final IOException e) {
-                org.appwork.loggingv3.LogV3.log(new IOException("URL:" + resource, e).fillInStackTrace());
+                org.appwork.loggingv3.LogV3.log(new IOException("URL:" + resource, e));
             } finally {
                 try {
                     is.close();
