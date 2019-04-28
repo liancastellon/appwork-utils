@@ -374,6 +374,9 @@ public class TranslationHandler implements InvocationHandler {
         if (method.getName().equals("_getHandler")) {
             return this;
         }
+        if (Thread.currentThread() instanceof LocaleConfigThread) {
+            return ((LocaleConfigThread) Thread.currentThread()).getTranslation(this, proxy, method, args);
+        }
         if (Translateable.class.isAssignableFrom(method.getReturnType())) {
             return new Translateable() {
                 @Override
