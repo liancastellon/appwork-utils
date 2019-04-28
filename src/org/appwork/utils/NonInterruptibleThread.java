@@ -50,6 +50,15 @@ import org.appwork.loggingv3.LogV3;
  *
  */
 public class NonInterruptibleThread extends Thread {
+    protected Thread callingThread;
+
+    /**
+     * @return the callingThread
+     */
+    public Thread getCallingThread() {
+        return callingThread;
+    }
+
     protected NonInterruptibleThread(Runnable r) {
         super(r, "NonInterruptibleThread_" + System.currentTimeMillis());
     }
@@ -91,6 +100,7 @@ public class NonInterruptibleThread extends Thread {
         } else {
             final Throwable caller = new Exception();
             final StackTraceElement callerMethod = DebugMode.TRUE_IN_IDE_ELSE_FALSE ? getCaller(caller) : null;
+            final Thread callingThread = Thread.currentThread();
             final Future<T> fut = POOL.submit(new Callable<T>() {
                 @Override
                 public T call() throws Exception {
@@ -100,6 +110,7 @@ public class NonInterruptibleThread extends Thread {
                         } else {
                             Thread.currentThread().setName("NonInterruptibleThread:Active");
                         }
+                        ((NonInterruptibleThread) Thread.currentThread()).callingThread = callingThread;
                         return run.run();
                     } catch (InterruptedException e) {
                         LogV3.defaultLogger().exception("InterruptException in NonInterruptable Thread. This must not happen!", e);
@@ -109,6 +120,7 @@ public class NonInterruptibleThread extends Thread {
                         throw new IllegalStateException(e);
                     } finally {
                         Thread.currentThread().setName("NonInterruptibleThread:Idle");
+                        ((NonInterruptibleThread) Thread.currentThread()).callingThread = null;
                     }
                 }
             });
@@ -157,5 +169,22 @@ public class NonInterruptibleThread extends Thread {
                 return null;
             }
         });
+    }
+
+    /**
+     * returns the currentthread. if the thread is a NonInterruptableThread, this method returns the caller instead
+     *
+     * @return
+     */
+    public static Thread currentOrCallerThread() {
+        Thread th = Thread.currentThread();
+        while (th instanceof NonInterruptibleThread) {
+            Thread nth = ((NonInterruptibleThread) th).getCallingThread();
+            if (nth == null) {
+                break;
+            }
+            th = nth;
+        }
+        return th;
     }
 }
