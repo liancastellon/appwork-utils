@@ -40,6 +40,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.WeakHashMap;
 
 import org.appwork.storage.config.annotations.IntegerInterface;
 import org.appwork.storage.config.annotations.LabelInterface;
@@ -365,6 +366,30 @@ public class TranslationHandler implements InvocationHandler {
         return ret;
     }
 
+    private final static WeakHashMap<Thread, CustomTranslationInterface> CUSTOM_TRANSLATION_MAP = new WeakHashMap<Thread, CustomTranslationInterface>();
+
+    public static CustomTranslationInterface setCustomTranslation(final CustomTranslationInterface customTranslation) {
+        synchronized (CUSTOM_TRANSLATION_MAP) {
+            if (customTranslation == null) {
+                return CUSTOM_TRANSLATION_MAP.remove(Thread.currentThread());
+            } else {
+                return CUSTOM_TRANSLATION_MAP.put(Thread.currentThread(), customTranslation);
+            }
+        }
+    }
+
+    public static CustomTranslationInterface clearCustomTranslation() {
+        synchronized (CUSTOM_TRANSLATION_MAP) {
+            return CUSTOM_TRANSLATION_MAP.remove(Thread.currentThread());
+        }
+    }
+
+    private CustomTranslationInterface getCustomTranslation() {
+        synchronized (CUSTOM_TRANSLATION_MAP) {
+            return CUSTOM_TRANSLATION_MAP.get(Thread.currentThread());
+        }
+    }
+
     public Object invoke(final Object proxy, final Method method, final Object[] args) throws Throwable {
         final java.util.List<TranslateResource> lookup = this.lookup;
         // for speed reasons let all controller methods (@see
@@ -376,8 +401,9 @@ public class TranslationHandler implements InvocationHandler {
         if (method.getName().equals("_getHandler")) {
             return this;
         }
-        if (Thread.currentThread() instanceof LocaleConfigThread) {
-            return ((LocaleConfigThread) Thread.currentThread()).getTranslation(this, proxy, method, args);
+        final CustomTranslationInterface customTranslation = getCustomTranslation();
+        if (customTranslation != null) {
+            return customTranslation.getTranslation(this, proxy, method, args);
         }
         if (Translateable.class.isAssignableFrom(method.getReturnType())) {
             return new Translateable() {

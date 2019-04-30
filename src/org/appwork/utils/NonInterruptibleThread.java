@@ -65,13 +65,13 @@ public class NonInterruptibleThread extends Thread {
     }
 
     private static final ThreadPoolExecutor POOL = new ThreadPoolExecutor(0, Integer.MAX_VALUE, 15, TimeUnit.SECONDS, new SynchronousQueue<Runnable>(), new ThreadFactory() {
-        @Override
-        public Thread newThread(Runnable r) {
-            final NonInterruptibleThread ret = new NonInterruptibleThread(r);
-            ret.setDaemon(true);
-            return ret;
-        }
-    });
+                                                     @Override
+                                                     public Thread newThread(Runnable r) {
+                                                         final NonInterruptibleThread ret = new NonInterruptibleThread(r);
+                                                         ret.setDaemon(true);
+                                                         return ret;
+                                                     }
+                                                 });
 
     private static final StackTraceElement getCaller(final Throwable throwable) {
         if (throwable != null && throwable.getStackTrace() != null) {
