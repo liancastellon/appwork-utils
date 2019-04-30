@@ -34,6 +34,7 @@
 package org.appwork.utils;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 
@@ -444,6 +445,32 @@ public class StringUtils {
         } else {
             return sb.substring(0, 1).toLowerCase(Locale.ENGLISH) + sb.substring(1);
         }
+    }
+
+    public static String shareAtLeastOne(String[] xArray, String[] yArray, final boolean caseInsensitive) {
+        if (xArray == null || yArray == null || xArray.length == 0 || yArray.length == 0) {
+            return null;
+        }
+        final HashSet<String> set = new HashSet<String>();
+        for (final String x : xArray) {
+            if (caseInsensitive) {
+                set.add(x.toLowerCase(Locale.ENGLISH));
+            } else {
+                set.add(x);
+            }
+        }
+        for (final String y : yArray) {
+            final boolean contains;
+            if (caseInsensitive) {
+                contains = set.contains(y.toLowerCase(Locale.ENGLISH));
+            } else {
+                contains = set.contains(y);
+            }
+            if (contains) {
+                return y;
+            }
+        }
+        return null;
     }
 
     /**
