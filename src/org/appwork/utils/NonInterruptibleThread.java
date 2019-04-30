@@ -41,6 +41,7 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.appwork.loggingv3.LogV3;
 
@@ -50,13 +51,13 @@ import org.appwork.loggingv3.LogV3;
  *
  */
 public class NonInterruptibleThread extends Thread {
-    protected Thread callingThread;
+    final protected AtomicReference<Thread> callingThread = new AtomicReference<Thread>(null);
 
     /**
      * @return the callingThread
      */
     public Thread getCallingThread() {
-        return callingThread;
+        return callingThread.get();
     }
 
     protected NonInterruptibleThread(Runnable r) {
@@ -110,7 +111,7 @@ public class NonInterruptibleThread extends Thread {
                         } else {
                             Thread.currentThread().setName("NonInterruptibleThread:Active");
                         }
-                        ((NonInterruptibleThread) Thread.currentThread()).callingThread = callingThread;
+                        ((NonInterruptibleThread) Thread.currentThread()).callingThread.set(callingThread);
                         return run.run();
                     } catch (InterruptedException e) {
                         LogV3.defaultLogger().exception("InterruptException in NonInterruptable Thread. This must not happen!", e);
@@ -120,7 +121,9 @@ public class NonInterruptibleThread extends Thread {
                         throw new IllegalStateException(e);
                     } finally {
                         Thread.currentThread().setName("NonInterruptibleThread:Idle");
-                        ((NonInterruptibleThread) Thread.currentThread()).callingThread = null;
+                        if (!((NonInterruptibleThread) Thread.currentThread()).callingThread.compareAndSet(callingThread, null)) {
+                            LogV3.log(new IllegalStateException());
+                        }
                     }
                 }
             });

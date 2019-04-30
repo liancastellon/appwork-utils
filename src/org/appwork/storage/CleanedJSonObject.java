@@ -16,18 +16,42 @@ import java.util.Map.Entry;
 import org.appwork.utils.GetterSetter;
 
 public class CleanedJSonObject {
-    private Object            object;
-    private String            key;
-    private CleanedJSonObject parent;
+    public static interface CompareInstanceProvider {
+        /**
+         * @param class1
+         * @return
+         */
+        Object createInstance(Class<? extends Object> class1);
+    }
+
+    private Object                  object;
+    private String                  key;
+    private CleanedJSonObject       parent;
+    private CompareInstanceProvider compareFactory;
+
+    /**
+     * @param compareFactory
+     *            the compareFactory to set
+     */
+    public CleanedJSonObject setCompareFactory(CompareInstanceProvider compareFactory) {
+        this.compareFactory = compareFactory;
+        return this;
+    }
+
+    public CleanedJSonObject(Object responseData, CompareInstanceProvider compareFactory) {
+        this.object = responseData;
+        this.compareFactory = compareFactory;
+    }
 
     public CleanedJSonObject(Object responseData) {
         this.object = responseData;
     }
 
-    public CleanedJSonObject(String key, Object responseData, CleanedJSonObject parent) {
+    protected CleanedJSonObject(String key, Object responseData, CleanedJSonObject parent) {
         this.object = responseData;
         this.key = key;
         this.parent = parent;
+        this.compareFactory = parent.compareFactory;
     }
 
     @Override
@@ -191,9 +215,15 @@ public class CleanedJSonObject {
     public HashMap<String, Object> storableToMap() throws NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
         final HashMap<String, Object> map = new HashMap<String, Object>();
         Object obj = null;
-        final Constructor<?> c = this.object.getClass().getDeclaredConstructor(new Class[] {});
-        c.setAccessible(true);
-        final Object empty = c.newInstance();
+        Object empty = null;
+        if (compareFactory != null) {
+            empty = compareFactory.createInstance(object.getClass());
+        }
+        if (empty == null) {
+            final Constructor<?> c = this.object.getClass().getDeclaredConstructor(new Class[] {});
+            c.setAccessible(true);
+            empty = c.newInstance();
+        }
         for (final GetterSetter gs : getGettersSetteres(this.object.getClass())) {
             if ("class".equals(gs.getKey())) {
                 continue;
