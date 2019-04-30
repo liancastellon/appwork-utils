@@ -180,14 +180,15 @@ public class NonInterruptibleThread extends Thread {
      * @return
      */
     public static Thread currentOrCallerThread() {
-        Thread th = Thread.currentThread();
-        while (th instanceof NonInterruptibleThread) {
-            Thread nth = ((NonInterruptibleThread) th).getCallingThread();
-            if (nth == null) {
-                break;
+        Thread thread = Thread.currentThread();
+        while (thread instanceof NonInterruptibleThread) {
+            final Thread callingThread = ((NonInterruptibleThread) thread).getCallingThread();
+            if (callingThread instanceof NonInterruptibleThread) {
+                thread = callingThread;
+            } else {
+                return callingThread;
             }
-            th = nth;
         }
-        return th;
+        return thread;
     }
 }

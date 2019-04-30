@@ -45,13 +45,27 @@ public class NonInterruptibleTest {
         NonInterruptibleThread.execute(new Runnable() {
             @Override
             public void run() {
-                System.out.println("test");
+                System.out.println("test1");
+                System.out.println(NonInterruptibleThread.currentOrCallerThread());
                 try {
-                    Thread.sleep(10000);
+                    Thread.sleep(5000);
                 } catch (InterruptedException e) {
                     // TODO Auto-generated catch block
                     e.printStackTrace();
                 }
+                NonInterruptibleThread.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        System.out.println("tes2");
+                        System.out.println(NonInterruptibleThread.currentOrCallerThread());
+                        try {
+                            Thread.sleep(5000);
+                        } catch (InterruptedException e) {
+                            // TODO Auto-generated catch block
+                            e.printStackTrace();
+                        }
+                    }
+                });
             }
         });
     }
