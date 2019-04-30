@@ -40,22 +40,10 @@ import java.lang.reflect.Method;
  * @date 28.04.2019
  *
  */
-public abstract class GetMethodNamesOnlyLocalesThread extends Thread implements LocaleConfigThread {
-    private String ret;
-
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.appwork.txtresource.LocaleConfigThread#getTranslation(org.appwork.txtresource.TranslationHandler, java.lang.Object,
-     * java.lang.reflect.Method, java.lang.Object[])
-     */
+public abstract class GetMethodNamesOnlyLocales implements CustomTranslationInterface {
     @Override
     public Object getTranslation(TranslationHandler translationHandler, Object proxy, Method method, Object[] args) {
         return method.getName();
-    }
-
-    public void run() {
-        this.ret = getMessage();
     }
 
     /**
@@ -64,19 +52,11 @@ public abstract class GetMethodNamesOnlyLocalesThread extends Thread implements 
     abstract protected String getMessage();
 
     public String get() {
-        start();
-        boolean interruptedFlag = false;
-        while (true) {
-            try {
-                join();
-                break;
-            } catch (InterruptedException e) {
-                interruptedFlag = true;
-            }
+        final CustomTranslationInterface old = TranslationHandler.setCustomTranslation(this);
+        try {
+            return getMessage();
+        } finally {
+            TranslationHandler.setCustomTranslation(old);
         }
-        if (interruptedFlag) {
-            Thread.currentThread().interrupt();
-        }
-        return ret;
     };
 }

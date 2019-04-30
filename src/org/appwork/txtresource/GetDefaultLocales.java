@@ -40,13 +40,23 @@ import java.lang.reflect.Method;
  * @date 28.04.2019
  *
  */
-public interface LocaleConfigThread {
+public abstract class GetDefaultLocales implements CustomTranslationInterface {
+    @Override
+    public Object getTranslation(TranslationHandler translationHandler, Object proxy, Method method, Object[] args) {
+        return translationHandler.getTranslation("en", method.getName(), args);
+    }
+
     /**
-     * @param translationHandler
-     * @param proxy
-     * @param method
-     * @param args
      * @return
      */
-    Object getTranslation(TranslationHandler translationHandler, Object proxy, Method method, Object[] args);
+    abstract protected String getMessage();
+
+    public String get() {
+        final CustomTranslationInterface old = TranslationHandler.setCustomTranslation(this);
+        try {
+            return getMessage();
+        } finally {
+            TranslationHandler.setCustomTranslation(old);
+        }
+    };
 }
