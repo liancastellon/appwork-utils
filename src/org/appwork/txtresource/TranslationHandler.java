@@ -322,9 +322,11 @@ public class TranslationHandler implements InvocationHandler {
      * @return
      */
     public String getTranslation(final String languageKey, final String methodname, final Object... params) {
-        final Class<?>[] types = new Class<?>[params.length];
-        for (int i = 0; i < params.length; i++) {
-            types[i] = params[i].getClass();
+        final Class<?>[] types = new Class<?>[params == null ? 0 : params.length];
+        if (params != null) {
+            for (int i = 0; i < params.length; i++) {
+                types[i] = params[i].getClass();
+            }
         }
         for (final Method m : this.methods) {
             if (m.getName().equals(methodname)) {
