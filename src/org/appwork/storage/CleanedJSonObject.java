@@ -5,10 +5,12 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -113,6 +115,9 @@ public class CleanedJSonObject {
                 final HashMap<String, GetterSetter> map = new HashMap<String, GetterSetter>();
                 while (clazz != null) {
                     for (final Method m : clazz.getDeclaredMethods()) {
+                        if (Modifier.isStatic(m.getModifiers())) {
+                            continue;
+                        }
                         String key = null;
                         boolean getter = false;
                         if (m.getName().startsWith("is") && isBoolean(m.getReturnType()) && m.getParameterTypes().length == 0) {
@@ -165,7 +170,64 @@ public class CleanedJSonObject {
         if (pass == null && pass2 != null) {
             return false;
         }
+        if (pass2 == null) {
+            return false;
+        }
+        if (isList(pass) && isList(pass2)) {
+            int p1 = getListLength(pass);
+            int p2 = getListLength(pass2);
+            if (p1 != p2) {
+                return false;
+            }
+            for (int i = 0; i < p1; i++) {
+                if (!equals(getListElement(pass, i), getListElement(pass2, i))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        // TODO:other data types like LISTS
         return pass.equals(pass2);
+    }
+
+    /**
+     * @param pass
+     * @param i
+     * @return
+     */
+    private Object getListElement(Object pass, int i) {
+        if (pass.getClass().isArray()) {
+            return Array.get(pass, i);
+        }
+        if (pass instanceof List) {
+            return ((List) pass).get(i);
+        }
+        throw new IllegalStateException();
+    }
+
+    /**
+     * @param pass
+     * @return
+     */
+    private int getListLength(Object pass) {
+        if (pass.getClass().isArray()) {
+            return Array.getLength(pass);
+        }
+        if (pass instanceof List) {
+            return ((List) pass).size();
+        }
+        throw new IllegalStateException();
+    }
+
+    /**
+     * @param pass2
+     * @return
+     */
+    private boolean isList(Object pass2) {
+        if (pass2 == null) {
+            return false;
+        }
+        return pass2.getClass().isArray() || pass2 instanceof List;
     }
 
     public String serialize() {
