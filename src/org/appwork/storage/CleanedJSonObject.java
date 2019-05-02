@@ -163,79 +163,78 @@ public class CleanedJSonObject {
         return clazz.getSuperclass();
     }
 
-    public boolean equals(final Object pass, final Object pass2) {
-        if (pass == pass2) {
+    public boolean equals(final Object objectX, final Object objectY) {
+        if (objectX == objectY) {
             return true;
-        }
-        if (pass == null && pass2 != null) {
+        } else if (objectX == null && objectY != null) {
             return false;
-        }
-        if (pass2 == null) {
+        } else if (objectY == null) {
             return false;
-        }
-        if (isList(pass) && isList(pass2)) {
-            int p1 = getListLength(pass);
-            int p2 = getListLength(pass2);
-            if (p1 != p2) {
+        } else if (isList(objectX) && isList(objectY)) {
+            final int l1 = getListLength(objectX);
+            final int l2 = getListLength(objectY);
+            if (l1 != l2) {
                 return false;
-            }
-            for (int i = 0; i < p1; i++) {
-                if (!equals(getListElement(pass, i), getListElement(pass2, i))) {
-                    return false;
+            } else {
+                for (int i = 0; i < l1; i++) {
+                    if (!equals(getListElement(objectX, i), getListElement(objectY, i))) {
+                        return false;
+                    }
                 }
+                return true;
             }
-            return true;
+        } else {
+            // TODO:other data types like LISTS
+            return objectX.equals(objectY);
         }
-        // TODO:other data types like LISTS
-        return pass.equals(pass2);
     }
 
     /**
-     * @param pass
+     * @param object
      * @param i
      * @return
      */
-    private Object getListElement(Object pass, int i) {
-        if (pass.getClass().isArray()) {
-            return Array.get(pass, i);
+    private final Object getListElement(Object object, int i) {
+        if (object.getClass().isArray()) {
+            return Array.get(object, i);
+        } else {
+            if (object instanceof List) {
+                return ((List) object).get(i);
+            } else {
+                throw new IllegalStateException(object + " is no List");
+            }
         }
-        if (pass instanceof List) {
-            return ((List) pass).get(i);
-        }
-        throw new IllegalStateException();
     }
 
     /**
-     * @param pass
+     * @param object
      * @return
      */
-    private int getListLength(Object pass) {
-        if (pass.getClass().isArray()) {
-            return Array.getLength(pass);
+    private final int getListLength(final Object object) {
+        if (object.getClass().isArray()) {
+            return Array.getLength(object);
+        } else if (object instanceof List) {
+            return ((List) object).size();
+        } else {
+            throw new IllegalStateException(object + " is no List");
         }
-        if (pass instanceof List) {
-            return ((List) pass).size();
-        }
-        throw new IllegalStateException();
     }
 
     /**
-     * @param pass2
+     * @param object
      * @return
      */
-    private boolean isList(Object pass2) {
-        if (pass2 == null) {
-            return false;
-        }
-        return pass2.getClass().isArray() || pass2 instanceof List;
+    private final boolean isList(final Object object) {
+        return object != null && (object.getClass().isArray() || object instanceof List);
     }
 
     public String serialize() {
         if (false) {
             return JSonStorage.serializeToJson(this.object);
+        } else {
+            final Object map = this.getCleanedData();
+            return JSonStorage.serializeToJson(map);
         }
-        final Object map = this.getCleanedData();
-        return JSonStorage.serializeToJson(map);
     }
 
     public Object getCleanedData() {
