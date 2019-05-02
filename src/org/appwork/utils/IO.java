@@ -53,6 +53,7 @@ import java.io.Writer;
 import java.net.URL;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.FileChannel;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 
 import org.appwork.utils.Files.AbstractHandler;
@@ -245,16 +246,16 @@ public class IO {
         UTF16LE(new byte[] { (byte) 255, (byte) 254 }, "UTF-16LE"),
         UTF32BE(new byte[] { (byte) 0, (byte) 0, (byte) 254, (byte) 255 }, "UTF-32BE"),
         UTF32LE(new byte[] { (byte) 0, (byte) 0, (byte) 255, (byte) 254 }, "UTF-32LE");
-        private final byte[] bomMarker;
-        private final String charSet;
+        private final byte[]  bomMarker;
+        private final Charset charSet;
 
-        public final String getCharSet() {
+        public final Charset getCharSet() {
             return charSet;
         }
 
         private BOM(final byte[] bomMarker, final String charSet) {
             this.bomMarker = bomMarker;
-            this.charSet = charSet;
+            this.charSet = Charset.forName(charSet);
         }
 
         public final int length() {
@@ -305,7 +306,7 @@ public class IO {
             if (ret != null) {
                 return ret;
             } else {
-                return new String(bytes, "UTF-8");
+                return new String(bytes, BOM.UTF8.getCharSet());
             }
         }
     }
@@ -346,8 +347,9 @@ public class IO {
                         }
                         try {
                             Thread.sleep(500 * retry++);
-                        } catch (InterruptedException e1) {
-                            throw e;
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                            throw Exceptions.addSuppressed(new ClosedByInterruptException(), e);
                         }
                     } else {
                         throw e;
@@ -400,11 +402,11 @@ public class IO {
         }
     }
 
-    public static String readInputStreamToString(final InputStream fis) throws UnsupportedEncodingException, IOException {
-        return readToString(new BufferedReader(new InputStreamReader(fis, "UTF-8")));
+    public static String readInputStreamToString(final InputStream fis) throws IOException {
+        return readToString(new BufferedReader(new InputStreamReader(fis, BOM.UTF8.getCharSet())));
     }
 
-    public static String readToString(final Reader f) throws UnsupportedEncodingException, IOException {
+    public static String readToString(final Reader f) throws IOException {
         try {
             BufferedReader bf = f instanceof BufferedReader ? (BufferedReader) f : new BufferedReader(f);
             String line;
@@ -458,7 +460,7 @@ public class IO {
             }
             total++;
         }
-        return new String(array, 0, totalString, "UTF-8");
+        return new String(array, 0, totalString, BOM.UTF8.getCharSet());
     }
 
     public static byte[] readStream(final int maxSize, final InputStream input) throws IOException {
@@ -648,8 +650,8 @@ public class IO {
      * @throws IOException
      * @throws UnsupportedEncodingException
      */
-    public static void secureWrite(final File file, final String utf8String, final SYNC sync) throws UnsupportedEncodingException, IOException {
-        IO.secureWrite(file, utf8String.getBytes("UTF-8"), sync);
+    public static void secureWrite(final File file, final String utf8String, final SYNC sync) throws IOException {
+        IO.secureWrite(file, utf8String.getBytes(BOM.UTF8.getCharSet()), sync);
     }
 
     /**
@@ -754,7 +756,7 @@ public class IO {
         try {
             final FileOutputStream fileOutputStream = new FileOutputStream(file, append);
             try {
-                final Writer writer = new OutputStreamWriter(fileOutputStream, "UTF-8");
+                final Writer writer = new OutputStreamWriter(fileOutputStream, BOM.UTF8.getCharSet());
                 writer.write(string);
                 writer.flush();
                 if (sync != null) {
