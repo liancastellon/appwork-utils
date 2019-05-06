@@ -716,7 +716,7 @@ public abstract class AbstractDialog<T> implements ActionListener, WindowListene
         if (this.initialized) {
             return;
         }
-        org.appwork.loggingv3.LogV3.info("Display Dialog: " + this);
+        org.appwork.loggingv3.LogV3.info("Display Dialog: " + this.getClass().getName() + ": " + this);
         this.initialized = true;
         this._init();
     }
@@ -877,6 +877,7 @@ public abstract class AbstractDialog<T> implements ActionListener, WindowListene
     public CloseReason getCloseReason() {
         final int rm = this.getReturnmask();
         if (rm == 0) {
+            // dialog got disposed without setting the returnmask - for example by closing the dialog's parent
             throw new IllegalStateException("Dialog has not been closed yet");
         }
         if (BinaryLogic.containsSome(rm, Dialog.RETURN_TIMEOUT)) {
