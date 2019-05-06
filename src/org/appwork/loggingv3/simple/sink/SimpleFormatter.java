@@ -82,19 +82,21 @@ public class SimpleFormatter implements Formatter {
         int line = 0;
         int preLength = pre.length();
         String[] lines = message.split("[\r\n]+");
+        StringBuilder sb = new StringBuilder(message.length() + lines.length * preLength);
+        sb.append(pre);
         // TODO: This is pretty slow for MANY lines
         for (String s : lines) {
             if (s.trim().length() > 0) {
                 if (line == 0) {
-                    pre += s;
+                    sb.append(s);
                 } else {
-                    pre += "\r\n" + fillPre("", " ", preLength) + s;
+                    sb.append("\r\n").append(fillPre("", " ", preLength)).append(s);
                 }
                 line++;
             }
         }
         // System.out.println(System.currentTimeMillis() - t);
-        return pre;
+        return sb.toString();
     }
 
     /**
