@@ -27,6 +27,12 @@ public class CompareUtils {
         return (x < y) ? -1 : ((x == y) ? 0 : 1);
     }
 
+    /**
+     * 
+     * @param x
+     * @param y
+     * @return <0 if x<y >0 if x>y 0 if x==y
+     */
     public static int compare(double x, double y) {
         // since 1.4
         return Double.compare(x, y);
