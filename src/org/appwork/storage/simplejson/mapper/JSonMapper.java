@@ -122,6 +122,8 @@ public class JSonMapper {
      */
     private boolean                                  ignoreIllegalEnumMappings     = false;
     protected final HashMap<Class<?>, TypeMapper<?>> typeMapper;
+    protected Class<?>                               autoMapJsonObjectClass        = HashMap.class;
+    protected Class<?>                               autoMapJsonArrayclass         = LinkedList.class;
 
     public JSonMapper() {
         typeMapper = new HashMap<Class<?>, TypeMapper<?>>();
@@ -314,9 +316,9 @@ public class JSonMapper {
             }
             if (clazz == null || clazz == Object.class) {
                 if (json instanceof JSonArray) {
-                    type = clazz = LinkedList.class;
+                    type = clazz = autoMapJsonArrayclass;
                 } else if (json instanceof JSonObject) {
-                    type = clazz = HashMap.class;
+                    type = clazz = autoMapJsonObjectClass;
                 } else if (json instanceof JSonValue) {
                     switch (((JSonValue) json).getType()) {
                     case BOOLEAN:
@@ -404,9 +406,9 @@ public class JSonMapper {
                 if (clazz == Object.class) {
                     // guess type
                     if (json instanceof JSonArray) {
-                        type = LinkedList.class;
+                        type = autoMapJsonArrayclass;
                     } else if (json instanceof JSonObject) {
-                        type = HashMap.class;
+                        type = autoMapJsonObjectClass;
                     }
                 }
                 if (Collection.class.isAssignableFrom(clazz)) {
@@ -583,7 +585,7 @@ public class JSonMapper {
      * @return
      * @throws MapperException
      */
-    private Class<?> mapClasses(final Class<?> class1) throws MapperException {
+    protected Class<?> mapClasses(final Class<?> class1) throws MapperException {
         if (class1.isInterface()) {
             if (List.class.isAssignableFrom(class1)) {
                 return ArrayList.class;
