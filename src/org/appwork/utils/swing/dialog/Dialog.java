@@ -44,7 +44,6 @@ import javax.swing.ImageIcon;
 import javax.swing.ListCellRenderer;
 import javax.swing.SwingUtilities;
 
-import org.appwork.resources.AWIcon;
 import org.appwork.resources.AWUTheme;
 import org.appwork.uio.UIOManager;
 import org.appwork.utils.BinaryLogic;
@@ -529,7 +528,8 @@ public class Dialog {
 
     protected <T> T showDialogRawOutsideEDT(final AbstractDialog<T> dialog) throws DialogClosedException, DialogCanceledException {
         dialog.setCallerIsEDT(false);
-        if (Thread.interrupted()) {
+        if (Thread.currentThread().isInterrupted()) {
+            // ^^Flag is not cleared. since we do not throw an interrupt exception, this is ok
             throw new DialogClosedException(Dialog.RETURN_INTERRUPT, new InterruptedException());
         }
         if (org.appwork.utils.Application.isHeadless()) {
@@ -575,6 +575,8 @@ public class Dialog {
                     }
                 };
                 try {
+                    // set interrupt flag, because we do not directly throw an interrupt exception
+                    Thread.currentThread().interrupt();
                     throw new DialogClosedException(dialog.getReturnmask() | Dialog.RETURN_INTERRUPT, e);
                 } catch (final IllegalStateException e1) {
                     // if we cannot get the returnmask from the dialog
