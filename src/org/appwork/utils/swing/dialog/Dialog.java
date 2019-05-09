@@ -211,19 +211,6 @@ public class Dialog {
         return Dialog.INSTANCE;
     }
 
-    public static void main(final String[] args) throws InterruptedException {
-        try {
-            Dialog.getInstance().showConfirmDialog(0, "Blabla?");
-            System.out.println("RETURNED OK");
-        } catch (final DialogClosedException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        } catch (final DialogCanceledException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-    }
-
     /**
      * The max counter value for a timeout Dialog
      */
@@ -463,7 +450,7 @@ public class Dialog {
             dialog = new ConfirmDialog(flag, title, message, icon, okOption, cancelOption) {
                 /*
                  * (non-Javadoc)
-                 *
+                 * 
                  * @see org.appwork.utils.swing.dialog.AbstractDialog#getDontShowAgainKey()
                  */
                 @Override
@@ -489,8 +476,9 @@ public class Dialog {
         if (lhandler != null) {
             //
             return lhandler.showDialog(dialog);
+        } else {
+            return this.showDialogRaw(dialog);
         }
-        return this.showDialogRaw(dialog);
     }
 
     /**
@@ -501,42 +489,54 @@ public class Dialog {
     public <T> T showDialogRaw(final AbstractDialog<T> dialog) throws DialogClosedException, DialogCanceledException {
         if (dialog == null) {
             return null;
-        }
-        if (SwingUtilities.isEventDispatchThread()) {
-            return this.showDialogRawInEDT(dialog);
         } else {
-            return this.showDialogRawOutsideEDT(dialog);
+            if (SwingUtilities.isEventDispatchThread()) {
+                return this.showDialogRawInEDT(dialog);
+            } else {
+                return this.showDialogRawOutsideEDT(dialog);
+            }
         }
     }
 
     protected <T> T showDialogRawInEDT(final AbstractDialog<T> dialog) throws DialogClosedException, DialogCanceledException {
         if (org.appwork.utils.Application.isHeadless()) {
             throw new HeadlessException("No Dialogs in Headless Mode!");
+        } else {
+            dialog.setCallerIsEDT(true);
+            dialog.displayDialog();
+            final T ret = dialog.getReturnValue();
+            final int mask = dialog.getReturnmask();
+            if (BinaryLogic.containsSome(mask, Dialog.RETURN_CLOSED)) {
+                throw new DialogClosedException(mask);
+            } else if (BinaryLogic.containsSome(mask, Dialog.RETURN_CANCEL)) {
+                throw new DialogCanceledException(mask);
+            } else {
+                return ret;
+            }
         }
-        dialog.setCallerIsEDT(true);
-        dialog.displayDialog();
-        final T ret = dialog.getReturnValue();
-        final int mask = dialog.getReturnmask();
-        if (BinaryLogic.containsSome(mask, Dialog.RETURN_CLOSED)) {
-            throw new DialogClosedException(mask);
-        }
-        if (BinaryLogic.containsSome(mask, Dialog.RETURN_CANCEL)) {
-            throw new DialogCanceledException(mask);
-        }
-        return ret;
     }
 
     protected <T> T showDialogRawOutsideEDT(final AbstractDialog<T> dialog) throws DialogClosedException, DialogCanceledException {
         dialog.setCallerIsEDT(false);
         if (Thread.currentThread().isInterrupted()) {
             // ^^Flag is not cleared. since we do not throw an interrupt exception, this is ok
+            new EDTRunner() {
+                @Override
+                protected void runInEDT() {
+                    try {
+                        // close dialog if open
+                        dialog.interrupt();
+                    } catch (final Exception e) {
+                        org.appwork.loggingv3.LogV3.log(e);
+                    }
+                }
+            };
             throw new DialogClosedException(Dialog.RETURN_INTERRUPT, new InterruptedException());
-        }
-        if (org.appwork.utils.Application.isHeadless()) {
+        } else if (org.appwork.utils.Application.isHeadless()) {
             throw new HeadlessException("No Dialogs in Headless Mode!");
         } else {
             final AtomicBoolean waitingLock = new AtomicBoolean(false);
-            final EDTRunner edth = new EDTRunner() {
+            new EDTRunner() {
                 @Override
                 protected void runInEDT() {
                     dialog.setDisposedCallback(new DisposeCallBack() {
@@ -554,13 +554,15 @@ public class Dialog {
             try {
                 if (Thread.interrupted()) {
                     throw new InterruptedException();
-                }
-                synchronized (waitingLock) {
-                    if (waitingLock.get() == false) {
-                        waitingLock.wait();
+                } else {
+                    synchronized (waitingLock) {
+                        if (waitingLock.get() == false) {
+                            waitingLock.wait();
+                        }
                     }
                 }
-            } catch (final InterruptedException e) {
+            } catch (final InterruptedException ie) {
+                org.appwork.loggingv3.LogV3.log(ie);
                 // Use a edtrunner here. AbstractCaptcha.dispose is edt save...
                 // however there may be several CaptchaDialog classes with
                 // overriddden unsave dispose methods...
@@ -577,22 +579,23 @@ public class Dialog {
                 try {
                     // set interrupt flag, because we do not directly throw an interrupt exception
                     Thread.currentThread().interrupt();
-                    throw new DialogClosedException(dialog.getReturnmask() | Dialog.RETURN_INTERRUPT, e);
-                } catch (final IllegalStateException e1) {
+                    throw new DialogClosedException(dialog.getReturnmask() | Dialog.RETURN_INTERRUPT, ie);
+                } catch (final IllegalStateException ise) {
+                    org.appwork.loggingv3.LogV3.log(ise);
                     // if we cannot get the returnmask from the dialog
-                    throw new DialogClosedException(Dialog.RETURN_INTERRUPT, e);
+                    throw new DialogClosedException(Dialog.RETURN_INTERRUPT, ie);
                 }
             }
+            final T ret = dialog.getReturnValue();
+            final int mask = dialog.getReturnmask();
+            if (BinaryLogic.containsSome(mask, Dialog.RETURN_CLOSED)) {
+                throw new DialogClosedException(mask);
+            } else if (BinaryLogic.containsSome(mask, Dialog.RETURN_CANCEL)) {
+                throw new DialogCanceledException(mask);
+            } else {
+                return ret;
+            }
         }
-        final T ret = dialog.getReturnValue();
-        final int mask = dialog.getReturnmask();
-        if (BinaryLogic.containsSome(mask, Dialog.RETURN_CLOSED)) {
-            throw new DialogClosedException(mask);
-        }
-        if (BinaryLogic.containsSome(mask, Dialog.RETURN_CANCEL)) {
-            throw new DialogCanceledException(mask);
-        }
-        return ret;
     }
 
     /**
@@ -878,7 +881,7 @@ public class Dialog {
         final ConfirmDialog d = new ConfirmDialog(UIOManager.BUTTONS_HIDE_CANCEL, "Image", "" + image.getWidth(null) + "x" + image.getHeight(null), new ImageIcon(image), null, null) {
             /*
              * (non-Javadoc)
-             *
+             * 
              * @see org.appwork.utils.swing.dialog.AbstractDialog#getModalityType()
              */
             @Override
