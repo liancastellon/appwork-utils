@@ -31,86 +31,41 @@
  *     If the AGPL does not fit your needs, please contact us. We'll find a solution.
  * ====================================================================================================================================================
  * ==================================================================================================================================================== */
-package org.appwork.utils.net;
+package org.appwork.utils.test;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.charset.Charset;
-import java.nio.charset.CharsetEncoder;
-import java.nio.charset.CoderResult;
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+
+import org.appwork.utils.InMemoryJarClassLoader;
 
 /**
  * @author daniel
- * @date Apr 16, 2019
+ * @date May 10, 2019
  *
  */
-public class CharSequenceInputStream extends InputStream {
-    protected final CharBuffer     cb;
-    protected final CharsetEncoder enc;
+public class InMemoryJarClassLoaderTest {
+    private static final String LAUNCHER_CLASS = "org.jdownloader.update.launcher.JDLauncherViaClassLoader";
 
-    public CharBuffer getCharBuffer() {
-        return cb;
-    }
-
-    public Charset get() {
-        return enc.charset();
-    }
-
-    protected final ByteBuffer buf;
-    private final byte[]       readBuf = new byte[1];
-
-    public CharSequenceInputStream(final CharBuffer charBuffer, final Charset charSet) {
-        cb = charBuffer;
-        enc = charSet.newEncoder();
-        buf = initByteBuffer(cb, enc);
-    }
-
-    public CharSequenceInputStream(final CharSequence charSequence, final Charset charSet) {
-        this(CharBuffer.wrap(charSequence), charSet);
-    }
-
-    protected ByteBuffer initByteBuffer(final CharBuffer charSequence, final CharsetEncoder encoder) {
-        final ByteBuffer ret = ByteBuffer.allocate((int) encoder.averageBytesPerChar() * 16);
-        ret.flip();
-        return ret;
-    }
-
-    @Override
-    public int read(byte[] b, int off, int len) throws IOException {
-        if (buf.remaining() > 0) {
-            len = Math.min(len, buf.remaining());
-            buf.get(b, off, len);
-            return len;
-        } else if (!cb.hasRemaining()) {
-            return -1;
-        } else {
-            final ByteBuffer bb = ByteBuffer.wrap(b, off, len);
-            CoderResult cr = enc.encode(cb, bb, !cb.hasRemaining());
-            if (bb.position() > 0) {
-                return bb.position();
-            } else if (cr.isOverflow()) {
-                buf.clear();
-                cr = enc.encode(cb, buf, !cb.hasRemaining());
-                if (buf.position() > 0) {
-                    buf.flip();
-                    return read(b, off, len);
-                } else {
-                    throw new IOException(cr.toString());
-                }
-            } else {
-                throw new IOException(cr.toString());
-            }
+    public static void main(String[] args) throws Exception {
+        final File file = new File("/home/daniel/.jd_home/JDownloader.jar");
+        byte[] buf = new byte[(int) file.length()];
+        final FileInputStream fis = new FileInputStream(file);
+        try {
+            new DataInputStream(fis).readFully(buf);
+        } finally {
+            fis.close();
         }
-    }
-
-    @Override
-    public int read() throws IOException {
-        if (read(readBuf, 0, 1) == -1) {
-            return -1;
-        } else {
-            return readBuf[0];
+        InMemoryJarClassLoader cl = new InMemoryJarClassLoader(buf);
+        Thread.currentThread().setContextClassLoader(cl);
+        try {
+            final Class<?> loader = cl.loadClass(InMemoryJarClassLoaderTest.LAUNCHER_CLASS);
+            final java.lang.reflect.Method mainMethod = loader.getMethod("main", new Class[] { String[].class });
+            mainMethod.invoke(null, new Object[] { args });
+            return;
+        } catch (Throwable e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 }
