@@ -143,11 +143,24 @@ public class CompareUtils {
      * @param number2
      * @return
      */
-    public static int compare(Number a, Number b) {
+    public static int compareNumber(Number a, Number b) {
         if (Clazz.isFixedPointNumber(a.getClass()) && Clazz.isFixedPointNumber(b.getClass())) {
             return compare(a.longValue(), b.longValue());
         } else {
             return compare(a.doubleValue(), b.doubleValue());
+        }
+    }
+
+    /**
+     * @param value
+     * @param query
+     * @return
+     */
+    public static boolean equalsNumber(Number a, Number b) {
+        if (Clazz.isFixedPointNumber(a.getClass()) && Clazz.isFixedPointNumber(b.getClass())) {
+            return a.longValue() == b.longValue();
+        } else {
+            return a.doubleValue() == b.doubleValue();
         }
     }
 }

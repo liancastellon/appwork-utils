@@ -152,19 +152,21 @@ public class Condition extends HashMap<String, Object> implements Storable {
      *
      */
     public static class AccessByField implements AccessMethod {
-        private final Field field;
+        private final Field   field;
+        private final boolean isStatic;
 
         /**
          * @param field
          */
         public AccessByField(Field field) {
             this.field = field;
+            isStatic = Modifier.isStatic(field.getModifiers());
         }
 
         @Override
         public Object getValue(Object value, String key) throws CannotGetValueException {
             try {
-                if (Modifier.isStatic(field.getModifiers())) {
+                if (isStatic) {
                     return field.get(null);
                 } else {
                     return field.get(value);
@@ -198,19 +200,21 @@ public class Condition extends HashMap<String, Object> implements Storable {
      *
      */
     public static class AccessMyMethod implements AccessMethod {
-        private final Method method;
+        private final Method  method;
+        private final boolean isStatic;
 
         /**
          * @param method
          */
         public AccessMyMethod(Method method) {
             this.method = method;
+            isStatic = Modifier.isStatic(method.getModifiers());
         }
 
         @Override
         public Object getValue(Object value, String key) throws CannotGetValueException {
             try {
-                return method.invoke(Modifier.isStatic(method.getModifiers()) ? null : value, new Object[] {});
+                return method.invoke(isStatic ? null : value, new Object[] {});
             } catch (IllegalAccessException e) {
                 throw new CannotGetValueException(e);
             } catch (IllegalArgumentException e) {
@@ -393,6 +397,8 @@ public class Condition extends HashMap<String, Object> implements Storable {
     }
 
     /**
+     * https://docs.mongodb.com/manual/reference/operator/query/exists/
+     *
      * @author Thomas
      * @date 07.05.2019
      *
@@ -401,7 +407,8 @@ public class Condition extends HashMap<String, Object> implements Storable {
         @Override
         public boolean matches(Condition container, Object query, Object value) throws CompareException {
             boolean exists = Boolean.TRUE.equals(query);
-            exists |= query instanceof Number && ((Number) query).doubleValue() != 0d;
+            // {$exists:true} == {$exists:1}
+            exists |= query instanceof Number && ((Number) query).intValue() != 0;
             if (exists) {
                 return value != KEY_DOES_NOT_EXIST;
             } else {
@@ -422,7 +429,7 @@ public class Condition extends HashMap<String, Object> implements Storable {
                 return false;
             }
             if (value instanceof Number && query instanceof Number) {
-                boolean ret = CompareUtils.compare(((Number) value), ((Number) query)) >= 0;
+                boolean ret = CompareUtils.compareNumber(((Number) value), ((Number) query)) >= 0;
                 return ret;
             }
             throw new CompareException("Unsupported query: " + query + " on " + value);
@@ -441,7 +448,7 @@ public class Condition extends HashMap<String, Object> implements Storable {
                 return false;
             }
             if (value instanceof Number && query instanceof Number) {
-                return CompareUtils.compare(((Number) value).doubleValue(), ((Number) query).doubleValue()) > 0;
+                return CompareUtils.compareNumber(((Number) value), ((Number) query)) > 0;
             }
             throw new CompareException("Unsupported query: " + query + " on " + value);
         }
@@ -459,7 +466,7 @@ public class Condition extends HashMap<String, Object> implements Storable {
                 return false;
             }
             if (value instanceof Number && query instanceof Number) {
-                return CompareUtils.compare(((Number) value).doubleValue(), ((Number) query).doubleValue()) <= 0;
+                return CompareUtils.compareNumber(((Number) value), ((Number) query)) <= 0;
             }
             throw new CompareException("Unsupported query: " + query + " on " + value);
         }
@@ -477,7 +484,7 @@ public class Condition extends HashMap<String, Object> implements Storable {
                 return false;
             }
             if (value instanceof Number && query instanceof Number) {
-                boolean ret = CompareUtils.compare(((Number) value).doubleValue(), ((Number) query).doubleValue()) < 0;
+                boolean ret = CompareUtils.compareNumber(((Number) value), ((Number) query)) < 0;
                 return ret;
             }
             throw new CompareException("Unsupported query: " + query + " on " + value);
@@ -547,17 +554,17 @@ public class Condition extends HashMap<String, Object> implements Storable {
     }
 
     private static final Object  KEY_DOES_NOT_EXIST = new Object() {
-                                                                                                                                                                                                     /*
-                                                                                                                                                                                                      * (non-
-                                                                                                                                                                                                      * Javadoc)
-                                                                                                                                                                                                      *
-                                                                                                                                                                                                      * @see
-                                                                                                                                                                                                      * java.
-                                                                                                                                                                                                      * util.
-                                                                                                                                                                                                      * AbstractMap#
-                                                                                                                                                                                                      * toString
-                                                                                                                                                                                                      * ()
-                                                                                                                                                                                                      */
+                                                                                                                                                                                                                          /*
+                                                                                                                                                                                                                           * (non-
+                                                                                                                                                                                                                           * Javadoc)
+                                                                                                                                                                                                                           *
+                                                                                                                                                                                                                           * @see
+                                                                                                                                                                                                                           * java.
+                                                                                                                                                                                                                           * util.
+                                                                                                                                                                                                                           * AbstractMap#
+                                                                                                                                                                                                                           * toString
+                                                                                                                                                                                                                           * ()
+                                                                                                                                                                                                                           */
                                                         @Override
                                                         public String toString() {
                                                             // TODO Auto-generated method stub
@@ -755,7 +762,7 @@ public class Condition extends HashMap<String, Object> implements Storable {
         } else if (query == null) {
             return false;
         } else if (value instanceof Number && query instanceof Number) {
-            return ((Number) value).doubleValue() == ((Number) query).doubleValue();
+            return CompareUtils.equalsNumber((Number) value, (Number) query);
         } else if (ReflectionUtils.isList(value) && ReflectionUtils.isList(query)) {
             final int l1 = ReflectionUtils.getListLength(value);
             final int l2 = ReflectionUtils.getListLength(query);

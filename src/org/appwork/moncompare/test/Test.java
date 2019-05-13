@@ -56,12 +56,12 @@ public class Test extends Condition {
      *
      */
     public static class EmbededObject {
-        private ArrayList<String> list = new ArrayList<String>();
+        public ArrayList<String> list = new ArrayList<String>();
         {
             this.list.add("s1");
             this.list.add("s2");
         }
-        private ArrayList<String[]> list2 = new ArrayList<String[]>();
+        public ArrayList<String[]> list2 = new ArrayList<String[]>();
         {
             this.list2.add(new String[] { "a", "b" });
             this.list2.add(new String[] { "a", "b" });
@@ -93,7 +93,7 @@ public class Test extends Condition {
         test.put("a", 1);
         test.put("sa", new String[] { "a", "b" });
         test.put("obj", new EmbededObject());
-        test.put("list", new int[] { 1, 2, 3, 5, 4, 6, 7, 8, 9 });
+        test.put("list", new int[] { 1, 2, 4, 6, 7, 8, 9 });
         Condition query = new Condition();
         ArrayList<Condition> cond = new ArrayList<Condition>();
         cond.add(new Condition("list", new Condition($IN, new int[] { 1 })));
@@ -101,8 +101,7 @@ public class Test extends Condition {
         cond.add(new Condition("list", new Condition($OR, new Condition[] { new Condition($IN, new int[] { 2 }), new Condition($IN, new int[] { 3 }) })));
         query.append($AND, cond);
         System.out.println(query.matches(test));
-        System.out.println(JSonStorage.serializeToJson(query));
-        Condition con = new Condition("obj.c", false);
+        Condition con = new Condition("obj.b", false);
         long started = System.currentTimeMillis();
         boolean success = true;
         for (int i = 0; i < 1000000; i++) {
