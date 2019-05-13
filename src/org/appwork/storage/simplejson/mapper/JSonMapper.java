@@ -122,7 +122,7 @@ public class JSonMapper {
      */
     private boolean                                  ignoreIllegalEnumMappings     = false;
     protected final HashMap<Class<?>, TypeMapper<?>> typeMapper;
-    protected Class<?>                               autoMapJsonObjectClass        = HashMap.class;
+    protected Class<?>                               autoMapJsonObjectClass        = LinkedHashMap.class;
     protected Class<?>                               autoMapJsonArrayclass         = LinkedList.class;
 
     public JSonMapper() {
@@ -588,7 +588,7 @@ public class JSonMapper {
     protected Class<?> mapClasses(final Class<?> class1) throws MapperException {
         if (class1.isInterface()) {
             if (List.class.isAssignableFrom(class1)) {
-                return ArrayList.class;
+                return LinkedList.class;
             } else if (Map.class.isAssignableFrom(class1)) {
                 return LinkedHashMap.class;
             } else if (Set.class.isAssignableFrom(class1)) {

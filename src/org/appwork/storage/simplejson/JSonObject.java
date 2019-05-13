@@ -33,8 +33,8 @@
  * ==================================================================================================================================================== */
 package org.appwork.storage.simplejson;
 
-import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.appwork.utils.StringUtils;
@@ -43,7 +43,7 @@ import org.appwork.utils.StringUtils;
  * @author thomas
  *
  */
-public class JSonObject extends HashMap<String, JSonNode> implements JSonNode {
+public class JSonObject extends LinkedHashMap<String, JSonNode> implements JSonNode {
     protected String          close                    = "\r\n}";
     protected String          keyValueDeliminator      = " : ";
     protected String          empty                    = "{}";
@@ -71,6 +71,10 @@ public class JSonObject extends HashMap<String, JSonNode> implements JSonNode {
         return super.put(key, value);
     }
 
+    /**
+     * This to String method MUST ALWAYS return proper JSON and without ANY whitespace or fillings. This method is used for signature
+     * validations and should not get changed
+     */
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder();

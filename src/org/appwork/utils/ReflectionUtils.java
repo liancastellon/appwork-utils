@@ -36,6 +36,7 @@ package org.appwork.utils;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FileInputStream;
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -287,5 +288,44 @@ public class ReflectionUtils {
         }
         throw new WTFException("Unsupported type: " + clazz);
 
+    }
+
+    /**
+     * @param object
+     * @param i
+     * @return
+     */
+    public static final Object getListElement(Object object, int i) {
+        if (object.getClass().isArray()) {
+            return Array.get(object, i);
+        } else {
+            if (object instanceof List) {
+                return ((List) object).get(i);
+            } else {
+                throw new IllegalStateException(object + " is no List");
+            }
+        }
+    }
+
+    /**
+     * @param object
+     * @return
+     */
+    public static final int getListLength(final Object object) {
+        if (object.getClass().isArray()) {
+            return Array.getLength(object);
+        } else if (object instanceof List) {
+            return ((List) object).size();
+        } else {
+            throw new IllegalStateException(object + " is no List");
+        }
+    }
+
+    /**
+     * @param object
+     * @return
+     */
+    public static final boolean isList(final Object object) {
+        return object != null && (object.getClass().isArray() || object instanceof List);
     }
 }

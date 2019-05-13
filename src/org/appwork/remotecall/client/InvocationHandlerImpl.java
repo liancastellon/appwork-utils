@@ -64,7 +64,7 @@ public class InvocationHandlerImpl<T extends RemoteCallInterface> implements Inv
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see java.lang.reflect.InvocationHandler#invoke(java.lang.Object, java.lang.reflect.Method, java.lang.Object[])
      */
     /**
@@ -122,6 +122,15 @@ public class InvocationHandlerImpl<T extends RemoteCallInterface> implements Inv
         }
     }
 
+    /**
+     * @param genericReturnType
+     * @return
+     */
+    public static boolean isByteArray(final Type genericReturnType) {
+        // TODO Auto-generated method stub
+        return genericReturnType == byte[].class;
+    }
+
     public final Object invoke(final Object proxy, final Method method, final Object[] args) throws Throwable {
         Object returnValue;
         Object obj;
@@ -129,7 +138,7 @@ public class InvocationHandlerImpl<T extends RemoteCallInterface> implements Inv
             returnValue = this.client.call(this.name, method, args);
             if (Clazz.isVoid(method.getGenericReturnType())) {
                 return null;
-            } else if (returnValue instanceof byte[] && Clazz.isByteArray(method.getGenericReturnType())) {
+            } else if (returnValue instanceof byte[] && isByteArray(method.getGenericReturnType())) {
                 return returnValue;
             } else {
                 final TypeRef<Object> tr = new TypeRef<Object>(method.getGenericReturnType()) {
