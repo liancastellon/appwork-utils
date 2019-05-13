@@ -10,11 +10,11 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.appwork.utils.CompareUtils;
 import org.appwork.utils.GetterSetter;
 
 public class CleanedJSonObject {
@@ -163,71 +163,6 @@ public class CleanedJSonObject {
         return clazz.getSuperclass();
     }
 
-    public boolean equals(final Object objectX, final Object objectY) {
-        if (objectX == objectY) {
-            return true;
-        } else if (objectX == null && objectY != null) {
-            return false;
-        } else if (objectY == null) {
-            return false;
-        } else if (isList(objectX) && isList(objectY)) {
-            final int l1 = getListLength(objectX);
-            final int l2 = getListLength(objectY);
-            if (l1 != l2) {
-                return false;
-            } else {
-                for (int i = 0; i < l1; i++) {
-                    if (!equals(getListElement(objectX, i), getListElement(objectY, i))) {
-                        return false;
-                    }
-                }
-                return true;
-            }
-        } else {
-            // TODO:other data types like LISTS
-            return objectX.equals(objectY);
-        }
-    }
-
-    /**
-     * @param object
-     * @param i
-     * @return
-     */
-    private final Object getListElement(Object object, int i) {
-        if (object.getClass().isArray()) {
-            return Array.get(object, i);
-        } else {
-            if (object instanceof List) {
-                return ((List) object).get(i);
-            } else {
-                throw new IllegalStateException(object + " is no List");
-            }
-        }
-    }
-
-    /**
-     * @param object
-     * @return
-     */
-    private final int getListLength(final Object object) {
-        if (object.getClass().isArray()) {
-            return Array.getLength(object);
-        } else if (object instanceof List) {
-            return ((List) object).size();
-        } else {
-            throw new IllegalStateException(object + " is no List");
-        }
-    }
-
-    /**
-     * @param object
-     * @return
-     */
-    private final boolean isList(final Object object) {
-        return object != null && (object.getClass().isArray() || object instanceof List);
-    }
-
     public String serialize() {
         if (false) {
             return JSonStorage.serializeToJson(this.object);
@@ -290,7 +225,7 @@ public class CleanedJSonObject {
                 continue;
             }
             obj = new CleanedJSonObject(gs.getKey(), gs.get(this.object), this).getCleanedData();
-            if (this.equals(obj, gs.get(empty))) {
+            if (CompareUtils.equalsDeep(obj, gs.get(empty))) {
                 continue;
             }
             // if (obj instanceof Storable) {

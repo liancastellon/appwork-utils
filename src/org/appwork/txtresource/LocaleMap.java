@@ -31,21 +31,41 @@
  *     If the AGPL does not fit your needs, please contact us. We'll find a solution.
  * ====================================================================================================================================================
  * ==================================================================================================================================================== */
-package org.appwork.moncompare;
+package org.appwork.txtresource;
+
+import java.util.LinkedHashMap;
+
+import org.appwork.storage.Storable;
 
 /**
  * @author Thomas
- * @date 06.05.2019
+ * @date 11.05.2019
  *
  */
-public interface Operator {
+public class LocaleMap extends LinkedHashMap<String, String> implements Storable {
     /**
-     * @param container
-     *            TODO
-     * @param test
-     * @param value
-     * @return
-     * @throws CompareException
+     *
      */
-    public boolean matches(Condition container, Object query, Object value) throws CompareException;
+    public LocaleMap(String locale, String msg) {
+        this.put(locale, msg);
+    }
+
+    public LocaleMap append(String locale, String msg) {
+        put(locale, msg);
+        return this;
+    }
+
+    /**
+     *
+     */
+    public LocaleMap() {
+        // TODO Auto-generated constructor stub
+    }
+
+    /**
+     * @param string
+     */
+    public LocaleMap(String def) {
+        this("en", def);
+    }
 }

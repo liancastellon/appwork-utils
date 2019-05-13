@@ -33,32 +33,16 @@
  * ==================================================================================================================================================== */
 package org.appwork.moncompare;
 
-import java.util.HashMap;
-
-import org.appwork.storage.JSonStorage;
-import org.appwork.storage.simplejson.ParserException;
-import org.appwork.storage.simplejson.mapper.MapperException;
-import org.appwork.utils.Application;
-
 /**
  * @author Thomas
- * @date 06.05.2019
+ * @date 10.05.2019
  *
  */
-public class Test {
-    public static void main(String[] args) throws CompareException, MapperException, ParserException {
-        Application.setApplication(".test");
-        HashMap<String, Object> test = new HashMap<String, Object>();
-        test.put("a", 1);
-        test.put("sa", new String[] { "a", "b" });
-        System.out.println(new Doc("a", 1).matches(test));
-        System.out.println(new Doc("a", new Doc("$eq", 1)).matches(test));
-        System.out.println(new Doc("a", new Doc("$gte", 1).append("$lt", 2)).matches(test));
-        System.out.println(new Doc("sa", new Doc("$in", "a")).matches(test));
-        System.out.println(new Doc("sa", new Doc("$in", new String[] { "h", "b" })).matches(test));
-        String json = JSonStorage.serializeToJson(new Doc("sa", new Doc("$in", new String[] { "h", "b" })));
-        System.out.println(json);
-        Doc query = Doc.parse(json);
-        System.out.println(query.matches(test));
+public class CannotGetValueException extends Exception {
+    /**
+     * @param e
+     */
+    public CannotGetValueException(Throwable e) {
+        super(e);
     }
 }

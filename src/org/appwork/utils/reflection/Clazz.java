@@ -41,14 +41,6 @@ import java.lang.reflect.Type;
  */
 public class Clazz {
     /**
-     * @param class1
-     * @return
-     */
-    public static String getPackage(final Class<?> clazz) {
-        return clazz.getPackage().getName();
-    }
-
-    /**
      * returns true if type is a boolean. No Matter if primitive or it's object wrapper
      *
      * @param type
@@ -178,17 +170,8 @@ public class Clazz {
     }
 
     /**
-     * @param genericReturnType
-     * @return
-     */
-    public static boolean isByteArray(final Type genericReturnType) {
-        // TODO Auto-generated method stub
-        return genericReturnType == byte[].class;
-    }
-
-    /**
      * is a instanceof b
-     * 
+     *
      * @param c
      * @param class1
      * @return
@@ -204,5 +187,21 @@ public class Clazz {
      */
     public static boolean isArray(Type type) {
         return type instanceof Class && ((Class) type).isArray();
+    }
+
+    /**
+     * @param a
+     * @return
+     */
+    public static boolean isFixedPointNumber(Type a) {
+        return !isFloatingPointNumber(a);
+    }
+
+    /**
+     * @param a
+     * @return
+     */
+    public static boolean isFloatingPointNumber(Type a) {
+        return isFloat(a) || isDouble(a);
     }
 }

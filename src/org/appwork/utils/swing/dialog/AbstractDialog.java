@@ -77,6 +77,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
 
 import org.appwork.exceptions.WTFException;
+import org.appwork.loggingv3.LogV3;
 import org.appwork.scheduler.DelayedRunnable;
 import org.appwork.storage.JSonStorage;
 import org.appwork.swing.MigPanel;
@@ -714,6 +715,7 @@ public abstract class AbstractDialog<T> implements ActionListener, WindowListene
      */
     public void displayDialog() {
         if (this.initialized) {
+            LogV3.info("Already Initialized. Tried to re-display a dialog?");
             return;
         }
         org.appwork.loggingv3.LogV3.info("Display Dialog: " + this.getClass().getName() + ": " + this);

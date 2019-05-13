@@ -4,6 +4,8 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.appwork.utils.reflection.Clazz;
+
 public class CompareUtils {
     /**
      * @param x
@@ -28,7 +30,7 @@ public class CompareUtils {
     }
 
     /**
-     * 
+     *
      * @param x
      * @param y
      * @return <0 if x<y >0 if x>y 0 if x==y
@@ -108,5 +110,44 @@ public class CompareUtils {
             }
         }
         return false;
+    }
+
+    public static boolean equalsDeep(final Object objectX, final Object objectY) {
+        if (objectX == objectY) {
+            return true;
+        } else if (objectX == null && objectY != null) {
+            return false;
+        } else if (objectY == null) {
+            return false;
+        } else if (ReflectionUtils.isList(objectX) && ReflectionUtils.isList(objectY)) {
+            final int l1 = ReflectionUtils.getListLength(objectX);
+            final int l2 = ReflectionUtils.getListLength(objectY);
+            if (l1 != l2) {
+                return false;
+            } else {
+                for (int i = 0; i < l1; i++) {
+                    if (!equalsDeep(ReflectionUtils.getListElement(objectX, i), ReflectionUtils.getListElement(objectY, i))) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        } else {
+            // TODO:other data types like LISTS
+            return objectX.equals(objectY);
+        }
+    }
+
+    /**
+     * @param number
+     * @param number2
+     * @return
+     */
+    public static int compare(Number a, Number b) {
+        if (Clazz.isFixedPointNumber(a.getClass()) && Clazz.isFixedPointNumber(b.getClass())) {
+            return compare(a.longValue(), b.longValue());
+        } else {
+            return compare(a.doubleValue(), b.doubleValue());
+        }
     }
 }
