@@ -291,7 +291,10 @@ public class LogToFileSink extends AbstractSink {
      */
     private void packToSingleZip(File logFolder, File zip, boolean delete) {
         try {
-            if (zip.exists()) {
+            if (!logFolder.exists() || !logFolder.isDirectory()) {
+                return;
+            }
+            if (zip.isFile()) {
                 // zip only exists if it is complete
                 // if the process got killed during cleanup, we have to delete remaining .deleteMe files
                 for (File f : logFolder.listFiles()) {
