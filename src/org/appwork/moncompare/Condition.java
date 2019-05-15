@@ -311,7 +311,7 @@ public class Condition extends HashMap<String, Object> implements Storable {
             if (value == KEY_DOES_NOT_EXIST) {
                 return false;
             }
-            Pattern pattern = (Pattern) container.cache.get(RegexOp.class);
+            Pattern pattern = (Pattern) container.getCache(RegexOp.class);
             if (pattern == null) {
                 String options = (String) container.get($OPTIONS);
                 int flags = 0;
@@ -340,7 +340,7 @@ public class Condition extends HashMap<String, Object> implements Storable {
                 if (pattern == null) {
                     throw new CompareException("Operator expects a String or a Pattern(is not serializable) type as parameter");
                 }
-                container.cache.put(RegexOp.class, pattern);
+                container.putCache(RegexOp.class, pattern);
             }
             return pattern.matcher(String.valueOf(value)).matches();
         }
@@ -554,23 +554,17 @@ public class Condition extends HashMap<String, Object> implements Storable {
     }
 
     private static final Object  KEY_DOES_NOT_EXIST = new Object() {
-                                                                                                                                                                                                                                /*
-                                                                                                                                                                                                                                 * (non-
-                                                                                                                                                                                                                                 * Javadoc)
-                                                                                                                                                                                                                                 *
-                                                                                                                                                                                                                                 * @see
-                                                                                                                                                                                                                                 * java.
-                                                                                                                                                                                                                                 * util.
-                                                                                                                                                                                                                                 * AbstractMap#
-                                                                                                                                                                                                                                 * toString
-                                                                                                                                                                                                                                 * ()
-                                                                                                                                                                                                                                 */
-                                                        @Override
-                                                        public String toString() {
-                                                            // TODO Auto-generated method stub
-                                                            return "KEY_DOES_NOT_EXIST";
-                                                        }
-                                                    };
+        /*
+         * (non- Javadoc)
+         *
+         * @see java. util. AbstractMap# toString ()
+         */
+        @Override
+        public String toString() {
+            // TODO Auto-generated method stub
+            return "KEY_DOES_NOT_EXIST";
+        }
+    };
     private static final Class[] EMPTY              = new Class[] {};
 
     /**
@@ -579,8 +573,6 @@ public class Condition extends HashMap<String, Object> implements Storable {
     public Condition() {
         // TODO Auto-generated constructor stub
     }
-
-    protected final HashMap<Object, Object> cache = new HashMap<Object, Object>();
 
     /**
      * @param string
@@ -610,9 +602,47 @@ public class Condition extends HashMap<String, Object> implements Storable {
         return super.put(key, value);
     }
 
+    protected Object getCache(final Object key) {
+        return useAccessCache ? cache.get(key) : null;
+    }
+
+    protected void putCache(final Object key, Object object) {
+        if (useAccessCache) {
+            synchronized (this) {
+                final HashMap<Object, Object> newCache = new HashMap<Object, Object>(cache);
+                newCache.put(key, object);
+                cache = newCache;
+            }
+        }
+    }
+
     protected void clearCache() {
-        cache.clear();
-        accessCache.clear();
+        synchronized (this) {
+            if (cache.size() > 0) {
+                cache = new HashMap<Object, Object>();
+            }
+            if (accessCache.size() > 0) {
+                accessCache = new HashMap<Condition.KeyOnClass, Condition.AccessMethod>();
+            }
+        }
+    }
+
+    protected volatile HashMap<Object, Object>           cache          = new HashMap<Object, Object>();
+    protected volatile HashMap<KeyOnClass, AccessMethod> accessCache    = new HashMap<KeyOnClass, AccessMethod>();
+    protected final boolean                              useAccessCache = true;
+
+    protected AccessMethod getAccessMethod(final KeyOnClass key) {
+        return useAccessCache ? accessCache.get(key) : null;
+    }
+
+    protected void putAccessMethod(final KeyOnClass key, AccessMethod method) {
+        if (useAccessCache) {
+            synchronized (this) {
+                final HashMap<KeyOnClass, AccessMethod> newCache = new HashMap<KeyOnClass, AccessMethod>(accessCache);
+                newCache.put(key, method);
+                accessCache = newCache;
+            }
+        }
     }
 
     /*
@@ -670,12 +700,12 @@ public class Condition extends HashMap<String, Object> implements Storable {
         super.replaceAll(function);
     }
 
-    private static HashSet<String> IGNORE = new HashSet<String>();
+    private static HashSet<String>           IGNORE = new HashSet<String>();
     static {
         IGNORE.add($OPTIONS);
         IGNORE.add($IGNORE_GETTER_EXCEPTIONS);
     }
-    private static HashMap<String, Operator> OPS = new HashMap<String, Operator>();
+    private static HashMap<String, Operator> OPS    = new HashMap<String, Operator>();
     static {
         OPS.put($GTE, new GteOp());
         OPS.put($GT, new GtOp());
@@ -805,8 +835,9 @@ public class Condition extends HashMap<String, Object> implements Storable {
      * @throws IllegalAccessException
      */
     public class KeyOnClass {
-        private Class<? extends Object> class1;
-        private String                  key;
+        private final Class<? extends Object> class1;
+        private final String                  key;
+        private final int                     hashCode;
 
         /**
          * @param class1
@@ -815,6 +846,7 @@ public class Condition extends HashMap<String, Object> implements Storable {
         public KeyOnClass(Class<? extends Object> class1, String key) {
             this.class1 = class1;
             this.key = key;
+            this.hashCode = class1.hashCode() + key.hashCode();
         }
 
         /*
@@ -826,20 +858,17 @@ public class Condition extends HashMap<String, Object> implements Storable {
         public boolean equals(Object obj) {
             if (obj == this) {
                 return true;
-            }
-            if (obj == null) {
+            } else if (obj == null) {
                 return false;
-            }
-            if (!(obj instanceof KeyOnClass)) {
+            } else if (!(obj instanceof KeyOnClass)) {
                 return false;
-            }
-            if (!class1.equals(((KeyOnClass) obj).class1)) {
+            } else if (!class1.equals(((KeyOnClass) obj).class1)) {
                 return false;
-            }
-            if (!key.equals(((KeyOnClass) obj).key)) {
+            } else if (!key.equals(((KeyOnClass) obj).key)) {
                 return false;
+            } else {
+                return true;
             }
-            return true;
         }
 
         /*
@@ -849,7 +878,7 @@ public class Condition extends HashMap<String, Object> implements Storable {
          */
         @Override
         public int hashCode() {
-            return class1.hashCode() + key.hashCode();
+            return hashCode;
         }
     }
 
@@ -862,18 +891,14 @@ public class Condition extends HashMap<String, Object> implements Storable {
         public abstract Object getValue(Object value, String key) throws CannotGetValueException;
     }
 
-    private HashMap<KeyOnClass, AccessMethod> accessCache    = new HashMap<KeyOnClass, AccessMethod>();
-    private final boolean                     useAccessCache = true;
-
     private Object value(Object obj, String... keys) throws CompareException {
         Object value = obj;
-        for (String key : keys) {
+        for (final String key : keys) {
             if (value == null) {
                 return KEY_DOES_NOT_EXIST;
             }
-            KeyOnClass cacheKey = new KeyOnClass(value.getClass(), key);
-            HashMap<KeyOnClass, AccessMethod> map = accessCache;
-            AccessMethod accessMethod = accessCache.get(cacheKey);
+            final KeyOnClass cacheKey = new KeyOnClass(value.getClass(), key);
+            AccessMethod accessMethod = getAccessMethod(cacheKey);
             if (accessMethod != null) {
                 try {
                     value = accessMethod.getValue(value, key);
@@ -900,9 +925,7 @@ public class Condition extends HashMap<String, Object> implements Storable {
             }
             if (ReflectionUtils.isList(value)) {
                 accessMethod = new AccessListElement();
-                if (useAccessCache) {
-                    accessCache.put(cacheKey, accessMethod);
-                }
+                putAccessMethod(cacheKey, accessMethod);
                 try {
                     value = accessMethod.getValue(value, key);
                 } catch (CannotGetValueException e) {
@@ -969,9 +992,7 @@ public class Condition extends HashMap<String, Object> implements Storable {
             }
             if (method != null) {
                 accessMethod = new AccessMyMethod(method);
-                if (useAccessCache) {
-                    accessCache.put(cacheKey, accessMethod);
-                }
+                putAccessMethod(cacheKey, accessMethod);
                 try {
                     value = accessMethod.getValue(value, key);
                 } catch (CannotGetValueException e) {
@@ -1004,9 +1025,7 @@ public class Condition extends HashMap<String, Object> implements Storable {
             }
             if (field != null) {
                 accessMethod = new AccessByField(field);
-                if (useAccessCache) {
-                    accessCache.put(cacheKey, accessMethod);
-                }
+                putAccessMethod(cacheKey, accessMethod);
                 try {
                     value = accessMethod.getValue(value, key);
                 } catch (CannotGetValueException e) {
@@ -1020,7 +1039,7 @@ public class Condition extends HashMap<String, Object> implements Storable {
             }
             if (useAccessCache) {
                 // only put Accessnotfound in the cache if the class it not a map or list and the key is not found in the class declaration.
-                accessCache.put(cacheKey, new AccessNotFound());
+                putAccessMethod(cacheKey, new AccessNotFound());
             }
             return KEY_DOES_NOT_EXIST;
         }
