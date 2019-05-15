@@ -554,17 +554,17 @@ public class Condition extends HashMap<String, Object> implements Storable {
     }
 
     private static final Object  KEY_DOES_NOT_EXIST = new Object() {
-                                                                                                                                                                                                                          /*
-                                                                                                                                                                                                                           * (non-
-                                                                                                                                                                                                                           * Javadoc)
-                                                                                                                                                                                                                           *
-                                                                                                                                                                                                                           * @see
-                                                                                                                                                                                                                           * java.
-                                                                                                                                                                                                                           * util.
-                                                                                                                                                                                                                           * AbstractMap#
-                                                                                                                                                                                                                           * toString
-                                                                                                                                                                                                                           * ()
-                                                                                                                                                                                                                           */
+                                                                                                                                                                                                                                /*
+                                                                                                                                                                                                                                 * (non-
+                                                                                                                                                                                                                                 * Javadoc)
+                                                                                                                                                                                                                                 *
+                                                                                                                                                                                                                                 * @see
+                                                                                                                                                                                                                                 * java.
+                                                                                                                                                                                                                                 * util.
+                                                                                                                                                                                                                                 * AbstractMap#
+                                                                                                                                                                                                                                 * toString
+                                                                                                                                                                                                                                 * ()
+                                                                                                                                                                                                                                 */
                                                         @Override
                                                         public String toString() {
                                                             // TODO Auto-generated method stub
@@ -714,7 +714,7 @@ public class Condition extends HashMap<String, Object> implements Storable {
                     continue;
                 }
             }
-            Object value = value(obj, es.getKey().split("\\."));
+            Object value = value(obj, es.getKey().split("[\\.\\:]"));
             if (es.getValue() instanceof Condition) {
                 if (!((Condition) es.getValue()).matches(value)) {
                     return false;
@@ -1019,6 +1019,7 @@ public class Condition extends HashMap<String, Object> implements Storable {
                 continue;
             }
             if (useAccessCache) {
+                // only put Accessnotfound in the cache if the class it not a map or list and the key is not found in the class declaration.
                 accessCache.put(cacheKey, new AccessNotFound());
             }
             return KEY_DOES_NOT_EXIST;
