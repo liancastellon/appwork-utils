@@ -399,7 +399,9 @@ public class SingleAppInstance {
                                 }
                             }
                         } catch (final IOException e) {
-                            org.appwork.loggingv3.LogV3.log(e);
+                            if (Thread.currentThread() == SingleAppInstance.this.daemon.get()) {
+                                org.appwork.loggingv3.LogV3.log(e);
+                            }
                         } finally {
                             if (client != null) {
                                 try {
