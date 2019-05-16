@@ -80,9 +80,50 @@ public class CrossSystem {
         FREEBSD(OSFamily.BSD),
         DRAGONFLYBSD(OSFamily.BSD),
         BSD(OSFamily.BSD),
+
         LINUX(OSFamily.LINUX),
         /*
-         * List must be sorted by release Date!!
+         * https://www.debian.org/releases/
+         * 
+         * Debian: List must be sorted by release Date!!
+         */
+        DEBIAN(OSFamily.LINUX),
+        DEBIAN_LENNY(OSFamily.LINUX),
+        DEBIAN_SQUEEZE(OSFamily.LINUX),
+        DEBIAN_WHEEZY(OSFamily.LINUX),
+        DEBIAN_JESSIE(OSFamily.LINUX),
+        DEBIAN_STRETCH(OSFamily.LINUX),
+        DEBIAN_BUSTER(OSFamily.LINUX),
+        DEBIAN_SID(OSFamily.LINUX), // unstable
+        /*
+         * RASPBIAN
+         */
+        RASPBIAN(OSFamily.LINUX),
+
+        /*
+         * https://en.wikipedia.org/wiki/Ubuntu_version_history
+         * 
+         * Ubuntu: List must be sorted by release Date!!
+         */
+        UBUNTU(OSFamily.LINUX),
+        UBUNTU_PRECISE(OSFamily.LINUX), // 12.04
+        UBUNTU_QUANTAL(OSFamily.LINUX), // 12.10
+        UBUNTU_RARING(OSFamily.LINUX), // 13.04
+        UBUNTU_SAUCY(OSFamily.LINUX), // 13.10
+        UBUNTU_TRUSTY(OSFamily.LINUX), // 14.04
+        UBUNTU_UTOPIC(OSFamily.LINUX), // 14.10
+        UBUNTU_VIVID(OSFamily.LINUX), // 15.04
+        UBUNTU_WILY(OSFamily.LINUX), // 15.10
+        UBUNTU_XENIAL(OSFamily.LINUX), // 16.04
+        UBUNTU_YAKKETY(OSFamily.LINUX), // 16.10
+        UBUNTU_ZESTY(OSFamily.LINUX), // 17.04
+        UBUNTU_ARTFUL(OSFamily.LINUX), // 17.10
+        UBUNTU_BIONIC(OSFamily.LINUX), // 18.04
+        UBUNTU_COSMIC(OSFamily.LINUX), // 18.10
+        UBUNTU_DISCO(OSFamily.LINUX), // 19.04
+        UBUNTU_EOAN(OSFamily.LINUX), // 19.10
+        /*
+         * MAC: List must be sorted by release Date!!
          */
         MAC(OSFamily.MAC),
         MAC_CHEETAH(OSFamily.MAC), // 10.0
@@ -100,9 +141,12 @@ public class CrossSystem {
         MAC_SIERRA(OSFamily.MAC), // 10.12
         MAC_HIGH_SIERRA(OSFamily.MAC), // 10.13
         MAC_MOJAVE(OSFamily.MAC), // 10.14
+        /*
+         * OS2
+         */
         OS2(OSFamily.OS2),
         /*
-         * List must be sorted by release Date!!
+         * Windows: List must be sorted by release Date!!
          */
         WINDOWS_OTHERS(OSFamily.WINDOWS),
         WINDOWS_NT(OSFamily.WINDOWS),
@@ -131,8 +175,22 @@ public class CrossSystem {
             return this.family;
         }
 
+        public static boolean sameOSFamily(final OperatingSystem x, final OperatingSystem y) {
+            if (x.getFamily().equals(y.getFamily())) {
+                final String prefixX = x.name().replaceFirst("(_.+)", "");
+                final String prefixY = y.name().replaceFirst("(_.+)", "");
+                return prefixX.equals(prefixY);
+            } else {
+                return false;
+            }
+        }
+
+        public boolean sameOSFamily(final OperatingSystem x) {
+            return sameOSFamily(x, this);
+        }
+
         public final boolean isMaximum(final OperatingSystem os) {
-            if (os.getFamily().equals(getFamily())) {
+            if (sameOSFamily(os)) {
                 final int maximum = os.ordinal();
                 return ordinal() <= maximum;
             }
@@ -140,7 +198,7 @@ public class CrossSystem {
         }
 
         public final boolean isMinimum(final OperatingSystem os) {
-            if (os.getFamily().equals(getFamily())) {
+            if (sameOSFamily(os)) {
                 final int minimum = os.ordinal();
                 return ordinal() >= minimum;
             }
@@ -487,7 +545,7 @@ public class CrossSystem {
         }
         /*
          * remove ending dots, not allowed under windows and others os maybe too
-         *
+         * 
          * Do not end a file or directory name with a space or a period.
          */
         pathPart = pathPart.replaceFirst("\\.+$", "");
@@ -761,6 +819,92 @@ public class CrossSystem {
         return null;
     }
 
+    private static OperatingSystem getLinuxRelease(final String osName) {
+        OperatingSystem ret = null;
+        if (osName.contains("linux")) {
+            final String[] sources = new String[] { "/etc/os-release", "/etc/issue" };
+            for (final String source : sources) {
+                final File issue = new File(source);
+                if (issue.isFile()) {
+                    try {
+                        final FileInputStream fis = new FileInputStream(issue);
+                        try {
+                            final BufferedReader is = new BufferedReader(new InputStreamReader(fis, "UTF-8"));
+                            try {
+                                String line = null;
+                                while ((line = is.readLine()) != null) {
+                                    line = line.toLowerCase(Locale.ENGLISH);
+                                    if (line.contains("debian")) {
+                                        ret = OperatingSystem.DEBIAN;
+                                        if (line.contains("buster")) {
+                                            return OperatingSystem.DEBIAN_BUSTER;
+                                        } else if (line.contains("stretch")) {
+                                            return OperatingSystem.DEBIAN_STRETCH;
+                                        } else if (line.contains("jessie")) {
+                                            return OperatingSystem.DEBIAN_JESSIE;
+                                        } else if (line.contains("wheezy")) {
+                                            return OperatingSystem.DEBIAN_WHEEZY;
+                                        } else if (line.contains("squeeze")) {
+                                            return OperatingSystem.DEBIAN_SQUEEZE;
+                                        } else if (line.contains("lenny")) {
+                                            return OperatingSystem.DEBIAN_LENNY;
+                                        } else if (line.contains("sid")) {
+                                            return OperatingSystem.DEBIAN_SID;
+                                        }
+                                    } else if (line.contains("raspbian")) {
+                                        return OperatingSystem.RASPBIAN;
+                                    } else if (line.contains("ubuntu")) {
+                                        ret = OperatingSystem.UBUNTU;
+                                        if (line.contains("19.10")) {
+                                            return OperatingSystem.UBUNTU_EOAN;
+                                        } else if (line.contains("19.04")) {
+                                            return OperatingSystem.UBUNTU_DISCO;
+                                        } else if (line.contains("18.10")) {
+                                            return OperatingSystem.UBUNTU_COSMIC;
+                                        } else if (line.contains("18.04")) {
+                                            return OperatingSystem.UBUNTU_BIONIC;
+                                        } else if (line.contains("17.10")) {
+                                            return OperatingSystem.UBUNTU_ARTFUL;
+                                        } else if (line.contains("17.04")) {
+                                            return OperatingSystem.UBUNTU_ZESTY;
+                                        } else if (line.contains("16.10")) {
+                                            return OperatingSystem.UBUNTU_YAKKETY;
+                                        } else if (line.contains("16.04")) {
+                                            return OperatingSystem.UBUNTU_XENIAL;
+                                        } else if (line.contains("15.10")) {
+                                            return OperatingSystem.UBUNTU_WILY;
+                                        } else if (line.contains("15.04")) {
+                                            return OperatingSystem.UBUNTU_VIVID;
+                                        } else if (line.contains("14.10")) {
+                                            return OperatingSystem.UBUNTU_UTOPIC;
+                                        } else if (line.contains("14.04")) {
+                                            return OperatingSystem.UBUNTU_TRUSTY;
+                                        } else if (line.contains("13.10")) {
+                                            return OperatingSystem.UBUNTU_SAUCY;
+                                        } else if (line.contains("13.04")) {
+                                            return OperatingSystem.UBUNTU_RARING;
+                                        } else if (line.contains("12.10")) {
+                                            return OperatingSystem.UBUNTU_QUANTAL;
+                                        } else if (line.contains("12.04")) {
+                                            return OperatingSystem.UBUNTU_PRECISE;
+                                        }
+                                    }
+                                }
+                            } finally {
+                                is.close();
+                            }
+                        } finally {
+                            fis.close();
+                        }
+                    } catch (final Throwable e) {
+                        org.appwork.loggingv3.LogV3.log(e);
+                    }
+                }
+            }
+        }
+        return ret;
+    }
+
     /**
      * @param osString
      * @return
@@ -778,13 +922,19 @@ public class CrossSystem {
             if (ret == null && os.contains("bsd")) {
                 ret = getBSDRelease(os);
             }
+            if (ret == null && os.contains("os/2")) {
+                ret = OperatingSystem.OS2;
+            }
+            if (ret == null) {
+                ret = getLinuxRelease(os);
+            }
             if (ret != null) {
                 return ret;
-            } else if (os.contains("os/2")) {
-                return OperatingSystem.OS2;
             } else {
+                // Fallback
                 return OperatingSystem.LINUX;
             }
+
         }
         return OperatingSystem.WINDOWS_8;
     }
