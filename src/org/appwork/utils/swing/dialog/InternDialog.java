@@ -38,12 +38,12 @@ import java.awt.Image;
 import java.util.ArrayList;
 import java.util.List;
 
+import net.miginfocom.swing.MigLayout;
+
 import org.appwork.loggingv3.LogV3;
 import org.appwork.swing.ExtJDialog;
 import org.appwork.utils.os.CrossSystem;
 import org.appwork.utils.swing.EDTRunner;
-
-import net.miginfocom.swing.MigLayout;
 
 public class InternDialog<T> extends ExtJDialog {
     /**
@@ -100,13 +100,14 @@ public class InternDialog<T> extends ExtJDialog {
 
     @Override
     public void dispose() {
+        final InternDialog<T> finalDialog = this;
         try {
             new EDTRunner() {
                 @Override
                 protected void runInEDT() {
-                    InternDialog.this.dialogModel.setDisposed(true);
-                    dialogModel.dispose();
-                    InternDialog.super.dispose();
+                    finalDialog.dialogModel.setDisposed(true);
+                    finalDialog.dialogModel.dispose();
+                    finalDialog.realDispose();
                 }
             }.waitForEDT();
         } catch (NullPointerException e) {
