@@ -51,6 +51,7 @@ import java.net.UnknownHostException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.appwork.shutdown.ShutdownController;
 import org.appwork.shutdown.ShutdownRunableEvent;
@@ -76,18 +77,18 @@ public class SingleAppInstance {
         }
     }
 
-    private final String            appID;
-    private InstanceMessageListener listener      = null;
-    private final File              lockFile;
-    private FileLock                fileLock      = null;
-    private FileChannel             lockChannel   = null;
-    private volatile boolean        daemonRunning = false;
-    private boolean                 alreadyUsed   = false;
-    private ServerSocket            serverSocket  = null;
-    private final String            singleApp     = "SingleAppInstance";
-    private Thread                  daemon        = null;
-    private static final int        DEFAULTPORT   = 9665;
-    private final File              portFile;
+    private final String                  appID;
+    private InstanceMessageListener       listener     = null;
+    private final File                    lockFile;
+    private FileLock                      fileLock     = null;
+    private FileChannel                   lockChannel  = null;
+
+    private boolean                       alreadyUsed  = false;
+    private ServerSocket                  serverSocket = null;
+    private final String                  singleApp    = "SingleAppInstance";
+    private final AtomicReference<Thread> daemon       = new AtomicReference<Thread>(null);
+    private static final int              DEFAULTPORT  = 9665;
+    private final File                    portFile;
 
     public SingleAppInstance(final String appID) {
         this(appID, new File(Application.getHome()));
@@ -111,9 +112,9 @@ public class SingleAppInstance {
         if (this.fileLock == null) {
             return;
         } else {
-            this.daemonRunning = false;
-            if (this.daemon != null) {
-                this.daemon.interrupt();
+            final Thread daemon = this.daemon.getAndSet(null);
+            if (daemon != null) {
+                daemon.interrupt();
             }
             try {
                 closeServer();
@@ -160,53 +161,52 @@ public class SingleAppInstance {
     }
 
     private InetAddress getLocalHost() {
-        InetAddress localhost = null;
         try {
-            localhost = InetAddress.getByName("127.0.0.1");
+            final InetAddress localhost = InetAddress.getByName("127.0.0.1");
+            if (localhost != null) {
+                return localhost;
+            }
         } catch (final UnknownHostException e1) {
         }
-        if (localhost != null) {
-            return localhost;
-        }
         try {
-            localhost = InetAddress.getByName(null);
+            return InetAddress.getByName(null);
         } catch (final UnknownHostException e1) {
         }
-        return localhost;
+        return null;
     }
 
     private String readLine(final BufferedInputStream in) {
-        final ByteArrayOutputStream inbuffer = new ByteArrayOutputStream();
         if (in == null) {
             return "";
-        }
-        int c;
-        try {
-            in.mark(1);
-            if (in.read() == -1) {
-                return null;
-            } else {
-                in.reset();
-            }
-            while ((c = in.read()) >= 0) {
-                if (c == 0 || c == 10 || c == 13) {
-                    break;
-                } else {
-                    inbuffer.write(c);
-                }
-            }
-            if (c == 13) {
+        } else {
+            final ByteArrayOutputStream buf = new ByteArrayOutputStream();
+            try {
                 in.mark(1);
-                if (in.read() != 10) {
-                    in.reset();
+                if (in.read() == -1) {
+                    return null;
                 }
+                int c;
+                while ((c = in.read()) >= 0) {
+                    if (c == 0 || c == 10 || c == 13) {
+                        break;
+                    } else {
+                        buf.write(c);
+                    }
+                }
+                if (c == 13) {
+                    in.mark(1);
+                    if (in.read() != 10) {
+                        in.reset();
+                    }
+                }
+            } catch (final Exception e) {
+                e.printStackTrace();
             }
-        } catch (final Exception e) {
-        }
-        try {
-            return inbuffer.toString("UTF-8");
-        } catch (final UnsupportedEncodingException e) {
-            return "";
+            try {
+                return buf.toString("UTF-8");
+            } catch (final UnsupportedEncodingException e) {
+                return "";
+            }
         }
     }
 
@@ -355,87 +355,93 @@ public class SingleAppInstance {
     }
 
     private synchronized void startDaemon() {
-        if (this.daemon != null) {
+        Thread daemon = this.daemon.get();
+        if (daemon != null && daemon.isAlive()) {
             return;
         }
-        this.daemon = new Thread(new Runnable() {
+        daemon = new Thread(new Runnable() {
             public void run() {
-                SingleAppInstance.this.daemonRunning = true;
-                while (SingleAppInstance.this.daemonRunning) {
-                    if (SingleAppInstance.this.daemon.isInterrupted()) {
-                        break;
-                    }
-                    Socket client = null;
-                    try {
-                        /* accept new request */
-                        client = SingleAppInstance.this.serverSocket.accept();
-                        client.setSoTimeout(10000);/* set Timeout */
-                        final BufferedInputStream in = new BufferedInputStream(client.getInputStream());
-                        final OutputStream out = client.getOutputStream();
-                        SingleAppInstance.this.writeLine(out, createID(SingleAppInstance.this.singleApp, appID, Application.getRoot(SingleAppInstance.class)));
-                        final String line = SingleAppInstance.this.readLine(in);
-                        if (line != null && line.length() > 0) {
-                            final int lines = Integer.parseInt(line);
-                            if (lines != 0) {
-                                final String[] message = new String[lines];
-                                for (int index = 0; index < lines; index++) {
-                                    message[index] = SingleAppInstance.this.readLine(in);
-                                }
-                                if (SingleAppInstance.this.listener != null) {
-                                    try {
-                                        SingleAppInstance.this.listener.parseMessage(message);
-                                    } catch (final Throwable e) {
-                                        e.printStackTrace();
+                try {
+                    while (Thread.currentThread() == SingleAppInstance.this.daemon.get()) {
+                        if (Thread.currentThread().isInterrupted()) {
+                            break;
+                        }
+                        Socket client = null;
+                        try {
+                            /* accept new request */
+                            client = SingleAppInstance.this.serverSocket.accept();
+                            client.setSoTimeout(10000);/* set Timeout */
+                            final BufferedInputStream in = new BufferedInputStream(client.getInputStream());
+                            final OutputStream out = client.getOutputStream();
+                            SingleAppInstance.this.writeLine(out, createID(SingleAppInstance.this.singleApp, appID, Application.getRoot(SingleAppInstance.class)));
+                            String line = SingleAppInstance.this.readLine(in);
+                            if (line != null && line.length() > 0) {
+                                if (line.matches("^\\d+$")) {
+                                    final int lines = Integer.parseInt(line);
+                                    if (lines != 0) {
+                                        final String[] message = new String[lines];
+                                        for (int index = 0; index < lines; index++) {
+                                            message[index] = SingleAppInstance.this.readLine(in);
+                                        }
+                                        if (SingleAppInstance.this.listener != null) {
+                                            try {
+                                                SingleAppInstance.this.listener.parseMessage(message);
+                                            } catch (final Throwable e) {
+                                                org.appwork.loggingv3.LogV3.log(e);
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    org.appwork.loggingv3.LogV3.info("invalid SingleAppInstanceClient message:" + line);
+                                    while ((line = SingleAppInstance.this.readLine(in)) != null) {
+                                        org.appwork.loggingv3.LogV3.info("invalid SingleAppInstanceClient message:" + line);
                                     }
                                 }
                             }
-                        }
-                    } catch (final IOException e) {
-                        if (daemonRunning) {
+                        } catch (final IOException e) {
                             org.appwork.loggingv3.LogV3.log(e);
-                        }
-                    } finally {
-                        if (client != null) {
-                            try {
-                                client.shutdownInput();
-                            } catch (final Throwable e) {
+                        } finally {
+                            if (client != null) {
+                                try {
+                                    client.shutdownInput();
+                                } catch (final Throwable e) {
+                                }
+                                try {
+                                    client.shutdownOutput();
+                                } catch (final Throwable e) {
+                                }
+                                try {
+                                    client.close();
+                                } catch (final Throwable e) {
+                                }
                             }
-                            try {
-                                client.shutdownOutput();
-                            } catch (final Throwable e) {
-                            }
-                            try {
-                                client.close();
-                            } catch (final Throwable e) {
-                            }
-                            client = null;
                         }
                     }
-                }
-                try {
-                    SingleAppInstance.this.serverSocket.close();
-                } catch (final Throwable e) {
-                    if (daemonRunning) {
-                        org.appwork.loggingv3.LogV3.log(e);
+                } finally {
+                    closeServer();
+                    synchronized (SingleAppInstance.this) {
+                        SingleAppInstance.this.daemon.compareAndSet(Thread.currentThread(), null);
                     }
                 }
             }
         });
-        this.daemon.setName("SingleAppInstance: " + this.appID);
+        daemon.setName("SingleAppInstance: " + this.appID);
         /* set daemonmode so java does not wait for this thread */
-        this.daemon.setDaemon(true);
-        this.daemon.start();
+        daemon.setDaemon(true);
+        this.daemon.set(daemon);
+        daemon.start();
     }
 
     private void writeLine(final OutputStream outputStream, final String line) {
         if (outputStream == null || line == null) {
             return;
-        }
-        try {
-            outputStream.write(line.getBytes("UTF-8"));
-            outputStream.write("\r\n".getBytes());
-            outputStream.flush();
-        } catch (final Exception e) {
+        } else {
+            try {
+                outputStream.write(line.getBytes("UTF-8"));
+                outputStream.write("\r\n".getBytes());
+                outputStream.flush();
+            } catch (final Exception e) {
+            }
         }
     }
 }

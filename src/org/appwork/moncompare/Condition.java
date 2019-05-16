@@ -554,17 +554,17 @@ public class Condition extends HashMap<String, Object> implements Storable {
     }
 
     private static final Object  KEY_DOES_NOT_EXIST = new Object() {
-        /*
-         * (non- Javadoc)
-         *
-         * @see java. util. AbstractMap# toString ()
-         */
-        @Override
-        public String toString() {
-            // TODO Auto-generated method stub
-            return "KEY_DOES_NOT_EXIST";
-        }
-    };
+                                                        /*
+                                                         * (non- Javadoc)
+                                                         *
+                                                         * @see java. util. AbstractMap# toString ()
+                                                         */
+                                                        @Override
+                                                        public String toString() {
+                                                            // TODO Auto-generated method stub
+                                                            return "KEY_DOES_NOT_EXIST";
+                                                        }
+                                                    };
     private static final Class[] EMPTY              = new Class[] {};
 
     /**
@@ -911,7 +911,18 @@ public class Condition extends HashMap<String, Object> implements Storable {
                 }
                 continue;
             }
-            if (value instanceof Map) {
+            if (value instanceof ConditionValueMap) {
+                Object newValue = ((ConditionValueMap) value).get(key);
+                if (newValue == null) {
+                    if (((ConditionValueMap) value).containsKey(key)) {
+                        return null;
+                    } else {
+                        return KEY_DOES_NOT_EXIST;
+                    }
+                }
+                value = newValue;
+                continue;
+            } else if (value instanceof Map) {
                 Object newValue = ((Map) value).get(key);
                 if (newValue == null) {
                     if (((Map) value).containsKey(key)) {
@@ -922,8 +933,7 @@ public class Condition extends HashMap<String, Object> implements Storable {
                 }
                 value = newValue;
                 continue;
-            }
-            if (ReflectionUtils.isList(value)) {
+            } else if (ReflectionUtils.isList(value)) {
                 accessMethod = new AccessListElement();
                 putAccessMethod(cacheKey, accessMethod);
                 try {
@@ -1072,7 +1082,7 @@ public class Condition extends HashMap<String, Object> implements Storable {
     }
 
     public static final org.appwork.storage.TypeRef<Condition> TYPE = new org.appwork.storage.TypeRef<Condition>(Condition.class) {
-    };
+                                                                    };
 
     /**
      * @param json
