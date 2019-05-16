@@ -911,10 +911,10 @@ public class Condition extends HashMap<String, Object> implements Storable {
                 }
                 continue;
             }
-            if (value instanceof ConditionValueMap) {
-                Object newValue = ((ConditionValueMap) value).get(key);
+            if (value instanceof ConditionMatchesRootMap) {
+                Object newValue = ((ConditionMatchesRootMap) value).get(key);
                 if (newValue == null) {
-                    if (((ConditionValueMap) value).containsKey(key)) {
+                    if (((ConditionMatchesRootMap) value).containsKey(key)) {
                         return null;
                     } else {
                         return KEY_DOES_NOT_EXIST;

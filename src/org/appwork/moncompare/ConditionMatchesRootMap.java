@@ -38,7 +38,7 @@ package org.appwork.moncompare;
  * @date May 16, 2019
  *
  */
-public interface ConditionValueMap {
+public interface ConditionMatchesRootMap {
 
     public Object get(String key);
 
