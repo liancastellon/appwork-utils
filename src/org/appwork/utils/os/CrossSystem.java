@@ -84,7 +84,7 @@ public class CrossSystem {
         LINUX(OSFamily.LINUX),
         /*
          * https://www.debian.org/releases/
-         * 
+         *
          * Debian: List must be sorted by release Date!!
          */
         DEBIAN(OSFamily.LINUX),
@@ -102,7 +102,7 @@ public class CrossSystem {
 
         /*
          * https://en.wikipedia.org/wiki/Ubuntu_version_history
-         * 
+         *
          * Ubuntu: List must be sorted by release Date!!
          */
         UBUNTU(OSFamily.LINUX),
@@ -193,16 +193,18 @@ public class CrossSystem {
             if (sameOSFamily(os)) {
                 final int maximum = os.ordinal();
                 return ordinal() <= maximum;
+            } else {
+                return false;
             }
-            return false;
         }
 
         public final boolean isMinimum(final OperatingSystem os) {
             if (sameOSFamily(os)) {
                 final int minimum = os.ordinal();
                 return ordinal() >= minimum;
+            } else {
+                return false;
             }
-            return false;
         }
     }
 
@@ -545,7 +547,7 @@ public class CrossSystem {
         }
         /*
          * remove ending dots, not allowed under windows and others os maybe too
-         * 
+         *
          * Do not end a file or directory name with a space or a period.
          */
         pathPart = pathPart.replaceFirst("\\.+$", "");
