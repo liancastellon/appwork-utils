@@ -1179,7 +1179,7 @@ public class ExtTable<E> extends JTable implements ToolTipHandler, PropertyChang
             final ExtColumn<E> firstColumn = this.getModel().getExtColumnByModelIndex(0);
             final Point point = new Point(firstColumn.getWidth() / 2, 0);
             final int scrollPosition = -this.getY();
-            final JViewport viewport = (JViewport) this.getParent();
+            final JViewport viewport = getParent() instanceof JViewport ? (JViewport) this.getParent() : null;
             final int viewportHeight = viewport == null ? this.getHeight() : viewport.getHeight();
             if (this.getSelectedRow() == -1) {
                 // find vertical position for no selection
