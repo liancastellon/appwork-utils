@@ -38,6 +38,7 @@ import java.awt.Image;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.appwork.loggingv3.LogV3;
 import org.appwork.swing.ExtJDialog;
 import org.appwork.utils.os.CrossSystem;
 import org.appwork.utils.swing.EDTRunner;
@@ -99,15 +100,20 @@ public class InternDialog<T> extends ExtJDialog {
 
     @Override
     public void dispose() {
-        System.out.println("Dispose Dialog");
-        new EDTRunner() {
-            @Override
-            protected void runInEDT() {
-                InternDialog.this.dialogModel.setDisposed(true);
-                dialogModel.dispose();
-                InternDialog.super.dispose();
-            }
-        }.waitForEDT();
+        try {
+            new EDTRunner() {
+                @Override
+                protected void runInEDT() {
+                    InternDialog.this.dialogModel.setDisposed(true);
+                    dialogModel.dispose();
+                    InternDialog.super.dispose();
+                }
+            }.waitForEDT();
+        } catch (NullPointerException e) {
+            LogV3.log(e);
+            LogV3.info("Exception Nullpointer in " + dialogModel + "\r\n" + getName() + " - " + this);
+            throw e;
+        }
     }
 
     @Override
