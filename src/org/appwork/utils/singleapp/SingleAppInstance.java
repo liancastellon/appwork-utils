@@ -82,7 +82,6 @@ public class SingleAppInstance {
     private final File                    lockFile;
     private FileLock                      fileLock     = null;
     private FileChannel                   lockChannel  = null;
-
     private boolean                       alreadyUsed  = false;
     private ServerSocket                  serverSocket = null;
     private final String                  singleApp    = "SingleAppInstance";
@@ -184,6 +183,8 @@ public class SingleAppInstance {
                 in.mark(1);
                 if (in.read() == -1) {
                     return null;
+                } else {
+                    in.reset();
                 }
                 int c;
                 while ((c = in.read()) >= 0) {
@@ -285,6 +286,31 @@ public class SingleAppInstance {
 
     public synchronized void setInstanceMessageListener(final InstanceMessageListener listener) {
         this.listener = listener;
+    }
+
+    public static void main(String[] args) throws Exception {
+        Application.setApplication(".test");
+        SingleAppInstance test = new SingleAppInstance("test");
+        test.setInstanceMessageListener(new InstanceMessageListener() {
+            @Override
+            public void parseMessage(String[] message) {
+                System.out.println(message);
+            }
+        });
+        test.start();
+        SingleAppInstance test2 = new SingleAppInstance("test");
+        test2.setInstanceMessageListener(new InstanceMessageListener() {
+            @Override
+            public void parseMessage(String[] message) {
+                System.out.println(message);
+            }
+        });
+        try {
+            test2.start();
+        } catch (AnotherInstanceRunningException e) {
+            test2.sendToRunningInstance(new String[] { "test" });
+        }
+        Thread.sleep(10000);
     }
 
     public synchronized void start() throws AnotherInstanceRunningException, UncheckableInstanceException {
