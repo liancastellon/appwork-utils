@@ -38,10 +38,12 @@ package org.appwork.moncompare;
  * @date May 16, 2019
  *
  */
-public interface ConditionMatchesRootObject {
+public interface ConditionObjectValueView {
 
-    public Object get(String key);
+    public Object getConditionObjectValue(String key);
 
-    public boolean containsKey(String key);
+    public boolean containsConditionObjectKey(String key);
+
+    public boolean isConditionObjectVisible();
 
 }
