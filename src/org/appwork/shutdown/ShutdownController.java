@@ -43,9 +43,9 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.appwork.loggingv3.LogV3;
 import org.appwork.utils.Exceptions;
 import org.appwork.utils.logging2.LogInterface;
-import org.appwork.loggingv3.LogV3;
 
 public class ShutdownController extends Thread {
     class ShutdownEventWrapper extends ShutdownEvent {
@@ -75,7 +75,7 @@ public class ShutdownController extends Thread {
 
         /*
          * (non-Javadoc)
-         * 
+         *
          * @see org.appwork.shutdown.ShutdownEvent#run()
          */
         @Override
@@ -300,7 +300,7 @@ public class ShutdownController extends Thread {
 
     public void removeShutdownEvent(final ShutdownEvent event) {
         if (this.isAlive()) {
-            throw new IllegalStateException("Cannot add hooks during shutdown");
+            throw new IllegalStateException("Cannot remove hooks during shutdown");
         }
         synchronized (this.hooks) {
             ShutdownEvent next;

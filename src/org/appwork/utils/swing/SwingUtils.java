@@ -186,6 +186,12 @@ public class SwingUtils {
         return parent;
     }
 
+    /**
+     * May return null!
+     * 
+     * @param p
+     * @return
+     */
     public static GraphicsDevice getScreenByLocation(Point p) {
         final GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
         final GraphicsDevice[] screens = ge.getScreenDevices();

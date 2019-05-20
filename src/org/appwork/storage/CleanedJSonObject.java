@@ -203,8 +203,7 @@ public class CleanedJSonObject {
                 return this.object;
             }
         } catch (final Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
+            throw new CleaningRuntimeException(e);
         }
     }
 
@@ -235,5 +234,22 @@ public class CleanedJSonObject {
             // }
         }
         return map;
+    }
+
+    /**
+     * @return
+     */
+    public HashMap<String, Object> toMap() {
+        try {
+            return storableToMap();
+        } catch (NoSuchMethodException e) {
+            throw new CleaningRuntimeException(e);
+        } catch (InstantiationException e) {
+            throw new CleaningRuntimeException(e);
+        } catch (IllegalAccessException e) {
+            throw new CleaningRuntimeException(e);
+        } catch (InvocationTargetException e) {
+            throw new CleaningRuntimeException(e);
+        }
     }
 }
