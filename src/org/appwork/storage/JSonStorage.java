@@ -309,7 +309,7 @@ public class JSonStorage {
         return ret;
     }
 
-    private static synchronized Object requestLock(final File file) {
+    public static synchronized Object requestLock(final File file) {
         AtomicInteger lock = JSonStorage.LOCKS.get(file);
         if (lock == null) {
             lock = new AtomicInteger(0);
@@ -661,7 +661,7 @@ public class JSonStorage {
         return list.toString();
     }
 
-    private static synchronized void unLock(final File file) {
+    public static synchronized void unLock(final File file) {
         final AtomicInteger lock = JSonStorage.LOCKS.get(file);
         if (lock != null) {
             if (lock.decrementAndGet() == 0) {

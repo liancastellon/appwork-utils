@@ -42,6 +42,7 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.jar.JarEntry;
@@ -180,8 +181,8 @@ public class TranslationFactory {
     /**
      *
      */
-    public static java.util.List<TranslateInterface> getCachedInterfaces() {
-        final HashSet<TranslateInterface> ret = new HashSet<TranslateInterface>();
+    public static List<TranslateInterface> getCachedInterfaces() {
+        final LinkedHashSet<TranslateInterface> ret = new LinkedHashSet<TranslateInterface>();
         synchronized (TranslationFactory.CACHE) {
             for (final TranslateInterface intf : TranslationFactory.CACHE.values()) {
                 if (intf != null) {
@@ -202,7 +203,7 @@ public class TranslationFactory {
     }
 
     public static List<String> listAvailableTranslations(final Class<? extends TranslateInterface>... classes) {
-        final HashSet<String> ret = new HashSet<String>();
+        final LinkedHashSet<String> ret = new LinkedHashSet<String>();
         TranslationFactory.collectByPath(Application.getResource("translations"), ret);
         TranslationFactory.findInClassPath("translations", ret);
         for (final Class<? extends TranslateInterface> clazz : classes) {
@@ -281,10 +282,6 @@ public class TranslationFactory {
         return true;
     }
 
-    /**
-     * @param lng
-     * @return
-     */
     public static Locale stringToLocale(final String lng) {
         // try {
         // if (Application.getJavaVersion() >= Application.JAVA17) {
@@ -305,30 +302,13 @@ public class TranslationFactory {
         }
     }
 
-    /**
-     * @param o
-     * @return
-     */
     public static List<String> getVariantsOf(String o) {
-        Locale loc = TranslationFactory.stringToLocale(o);
-        ArrayList<String> ret = new ArrayList<String>();
-        HashSet<String> dupe = new HashSet<String>();
-        String add = localeToString(loc.getLanguage(), loc.getCountry(), loc.getVariant());
-        if (dupe.add(add)) {
-            ret.add(add);
-        }
-        add = localeToString(loc.getLanguage(), loc.getCountry(), null);
-        if (dupe.add(add)) {
-            ret.add(add);
-        }
-        add = localeToString(loc.getLanguage(), null, loc.getVariant());
-        if (dupe.add(add)) {
-            ret.add(add);
-        }
-        add = localeToString(loc.getLanguage(), null, null);
-        if (dupe.add(add)) {
-            ret.add(add);
-        }
-        return ret;
+        final Locale loc = TranslationFactory.stringToLocale(o);
+        final LinkedHashSet<String> ret = new LinkedHashSet<String>();
+        ret.add(localeToString(loc.getLanguage(), loc.getCountry(), loc.getVariant()));
+        ret.add(localeToString(loc.getLanguage(), loc.getCountry(), null));
+        ret.add(localeToString(loc.getLanguage(), null, loc.getVariant()));
+        ret.add(localeToString(loc.getLanguage(), null, null));
+        return new ArrayList<String>(ret);
     }
 }
