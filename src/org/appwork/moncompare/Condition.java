@@ -42,6 +42,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 import org.appwork.loggingv3.LogV3;
 import org.appwork.storage.JSonStorage;
@@ -194,19 +195,40 @@ public class Condition extends HashMap<String, Object> implements Storable {
         }
     }
 
+    public static class AccessMapElement implements AccessMethod {
+        @Override
+        public Object getValue(Object value, String key) throws CannotGetValueException {
+            try {
+                final Map<?, ?> map = (Map<?, ?>) value;
+                final Object ret = map.get(key);
+                if (ret == null) {
+                    if (map.containsKey(key)) {
+                        return null;
+                    } else {
+                        return KEY_DOES_NOT_EXIST;
+                    }
+                } else {
+                    return ret;
+                }
+            } catch (Throwable e) {
+                throw new CannotGetValueException(e);
+            }
+        }
+    }
+
     /**
      * @author Thomas
      * @date 10.05.2019
      *
      */
-    public static class AccessMyMethod implements AccessMethod {
+    public static class AccessByMethod implements AccessMethod {
         private final Method  method;
         private final boolean isStatic;
 
         /**
          * @param method
          */
-        public AccessMyMethod(Method method) {
+        public AccessByMethod(Method method) {
             this.method = method;
             isStatic = Modifier.isStatic(method.getModifiers());
         }
@@ -252,8 +274,9 @@ public class Condition extends HashMap<String, Object> implements Storable {
         public boolean matches(Condition container, Object query, Object value) throws CompareException {
             if (value == KEY_DOES_NOT_EXIST) {
                 return false;
+            } else {
+                return container.equals(value.getClass().getName(), query);
             }
-            return container.equals(value.getClass().getName(), query);
         }
     }
 
@@ -267,13 +290,14 @@ public class Condition extends HashMap<String, Object> implements Storable {
         public boolean matches(Condition container, Object query, Object value) throws CompareException {
             if (value == KEY_DOES_NOT_EXIST) {
                 return false;
-            }
-            for (int i = 0; i < ReflectionUtils.getListLength(query); i++) {
-                if (!((Condition) ReflectionUtils.getListElement(query, i)).matches(value)) {
-                    return false;
+            } else {
+                for (int i = 0; i < ReflectionUtils.getListLength(query); i++) {
+                    if (!((Condition) ReflectionUtils.getListElement(query, i)).matches(value)) {
+                        return false;
+                    }
                 }
+                return true;
             }
-            return true;
         }
     }
 
@@ -287,13 +311,14 @@ public class Condition extends HashMap<String, Object> implements Storable {
         public boolean matches(Condition container, Object query, Object value) throws CompareException {
             if (value == KEY_DOES_NOT_EXIST) {
                 return false;
-            }
-            for (int i = 0; i < ReflectionUtils.getListLength(query); i++) {
-                if (((Condition) ReflectionUtils.getListElement(query, i)).matches(value)) {
-                    return true;
+            } else {
+                for (int i = 0; i < ReflectionUtils.getListLength(query); i++) {
+                    if (((Condition) ReflectionUtils.getListElement(query, i)).matches(value)) {
+                        return true;
+                    }
                 }
+                return false;
             }
-            return false;
         }
     }
 
@@ -310,39 +335,47 @@ public class Condition extends HashMap<String, Object> implements Storable {
         public boolean matches(Condition container, Object query, Object value) throws CompareException {
             if (value == KEY_DOES_NOT_EXIST) {
                 return false;
-            }
-            Pattern pattern = (Pattern) container.getCache(RegexOp.class);
-            if (pattern == null) {
-                String options = (String) container.get($OPTIONS);
-                int flags = 0;
-                if (options != null) {
-                    for (int i = 0; i < options.length(); i++) {
-                        switch (options.charAt(i)) {
-                        case 'i':
-                            flags |= Pattern.CASE_INSENSITIVE;
-                            break;
-                        case 'm':
-                            flags |= Pattern.MULTILINE;
-                            break;
-                        case 's':
-                            flags |= Pattern.DOTALL;
-                            break;
-                        default:
-                            throw new CompareException("Unsupported Regex Option");
+            } else {
+                Pattern pattern = (Pattern) container.getCache(RegexOp.class);
+                if (pattern == null) {
+                    String options = (String) container.get($OPTIONS);
+                    int flags = 0;
+                    if (options != null) {
+                        for (int i = 0; i < options.length(); i++) {
+                            switch (options.charAt(i)) {
+                            case 'i':
+                                flags |= Pattern.CASE_INSENSITIVE;
+                                break;
+                            case 'm':
+                                flags |= Pattern.MULTILINE;
+                                break;
+                            case 's':
+                                flags |= Pattern.DOTALL;
+                                break;
+                            default:
+                                throw new CompareException("Unsupported Regex Option");
+                            }
                         }
                     }
+                    if (query instanceof Pattern) {
+                        pattern = (Pattern) query;
+                    } else if (query instanceof String) {
+                        try {
+                            pattern = Pattern.compile((String) query, flags);
+                        } catch (PatternSyntaxException e) {
+                            throw new CompareException(e);
+                        } catch (IllegalArgumentException e) {
+                            throw new CompareException(e);
+                        }
+                    }
+                    if (pattern == null) {
+                        throw new CompareException("Operator expects a String or a Pattern(is not serializable) type as parameter");
+                    } else {
+                        container.putCache(RegexOp.class, pattern);
+                    }
                 }
-                if (query instanceof Pattern) {
-                    pattern = (Pattern) query;
-                } else if (query instanceof String) {
-                    pattern = Pattern.compile((String) query, flags);
-                }
-                if (pattern == null) {
-                    throw new CompareException("Operator expects a String or a Pattern(is not serializable) type as parameter");
-                }
-                container.putCache(RegexOp.class, pattern);
+                return pattern.matcher(String.valueOf(value)).matches();
             }
-            return pattern.matcher(String.valueOf(value)).matches();
         }
     }
 
@@ -357,11 +390,9 @@ public class Condition extends HashMap<String, Object> implements Storable {
             // the field does not exist.
             if (value == KEY_DOES_NOT_EXIST) {
                 return true;
-            }
-            if (!ReflectionUtils.isList(query)) {
+            } else if (!ReflectionUtils.isList(query)) {
                 throw new CompareException("Operator expects an array as parameter");
-            }
-            if (!ReflectionUtils.isList(value)) {
+            } else if (!ReflectionUtils.isList(value)) {
                 // value is not a list
                 for (int i = 0; i < ReflectionUtils.getListLength(query); i++) {
                     if (container.equals(value, ReflectionUtils.getListElement(query, i))) {
@@ -391,8 +422,9 @@ public class Condition extends HashMap<String, Object> implements Storable {
         public boolean matches(Condition container, Object query, Object value) throws CompareException {
             if (value == KEY_DOES_NOT_EXIST) {
                 return true;
+            } else {
+                return !CompareUtils.equals(query, value);
             }
-            return !CompareUtils.equals(query, value);
         }
     }
 
@@ -427,12 +459,12 @@ public class Condition extends HashMap<String, Object> implements Storable {
         public boolean matches(Condition container, Object query, Object value) throws CompareException {
             if (value == KEY_DOES_NOT_EXIST) {
                 return false;
-            }
-            if (value instanceof Number && query instanceof Number) {
+            } else if (value instanceof Number && query instanceof Number) {
                 boolean ret = CompareUtils.compareNumber(((Number) value), ((Number) query)) >= 0;
                 return ret;
+            } else {
+                throw new CompareException("Unsupported query: " + query + " on " + value);
             }
-            throw new CompareException("Unsupported query: " + query + " on " + value);
         }
     }
 
@@ -446,11 +478,11 @@ public class Condition extends HashMap<String, Object> implements Storable {
         public boolean matches(Condition container, Object query, Object value) throws CompareException {
             if (value == KEY_DOES_NOT_EXIST) {
                 return false;
-            }
-            if (value instanceof Number && query instanceof Number) {
+            } else if (value instanceof Number && query instanceof Number) {
                 return CompareUtils.compareNumber(((Number) value), ((Number) query)) > 0;
+            } else {
+                throw new CompareException("Unsupported query: " + query + " on " + value);
             }
-            throw new CompareException("Unsupported query: " + query + " on " + value);
         }
     }
 
@@ -464,11 +496,11 @@ public class Condition extends HashMap<String, Object> implements Storable {
         public boolean matches(Condition container, Object query, Object value) throws CompareException {
             if (value == KEY_DOES_NOT_EXIST) {
                 return false;
-            }
-            if (value instanceof Number && query instanceof Number) {
+            } else if (value instanceof Number && query instanceof Number) {
                 return CompareUtils.compareNumber(((Number) value), ((Number) query)) <= 0;
+            } else {
+                throw new CompareException("Unsupported query: " + query + " on " + value);
             }
-            throw new CompareException("Unsupported query: " + query + " on " + value);
         }
     }
 
@@ -482,12 +514,12 @@ public class Condition extends HashMap<String, Object> implements Storable {
         public boolean matches(Condition container, Object query, Object value) throws CompareException {
             if (value == KEY_DOES_NOT_EXIST) {
                 return false;
-            }
-            if (value instanceof Number && query instanceof Number) {
+            } else if (value instanceof Number && query instanceof Number) {
                 boolean ret = CompareUtils.compareNumber(((Number) value), ((Number) query)) < 0;
                 return ret;
+            } else {
+                throw new CompareException("Unsupported query: " + query + " on " + value);
             }
-            throw new CompareException("Unsupported query: " + query + " on " + value);
         }
     }
 
@@ -501,11 +533,9 @@ public class Condition extends HashMap<String, Object> implements Storable {
         public boolean matches(Condition container, Object query, Object value) throws CompareException {
             if (value == KEY_DOES_NOT_EXIST) {
                 return false;
-            }
-            if (!ReflectionUtils.isList(query)) {
+            } else if (!ReflectionUtils.isList(query)) {
                 throw new CompareException("Operator expects an array as parameter");
-            }
-            if (!ReflectionUtils.isList(value)) {
+            } else if (!ReflectionUtils.isList(value)) {
                 // Use the $in Operator to Match Values
                 for (int j = 0; j < ReflectionUtils.getListLength(query); j++) {
                     if (container.equals(value, ReflectionUtils.getListElement(query, j))) {
@@ -521,8 +551,8 @@ public class Condition extends HashMap<String, Object> implements Storable {
                         }
                     }
                 }
+                return false;
             }
-            return false;
         }
     }
 
@@ -536,8 +566,7 @@ public class Condition extends HashMap<String, Object> implements Storable {
         public boolean matches(Condition container, Object query, Object value) throws CompareException {
             if (container.equals(query, value)) {
                 return true;
-            }
-            if (ReflectionUtils.isList(value)) {
+            } else if (ReflectionUtils.isList(value)) {
                 // Match an Array Value
                 // If the specified <value> is an array, MongoDB matches documents where the <field> matches the array exactly or the
                 // <field> contains an element that matches the array exactly. The order of the elements matters. For an example, see
@@ -548,8 +577,10 @@ public class Condition extends HashMap<String, Object> implements Storable {
                         return true;
                     }
                 }
+                return false;
+            } else {
+                return false;
             }
-            return false;
         }
     }
 
@@ -561,7 +592,6 @@ public class Condition extends HashMap<String, Object> implements Storable {
                                                          */
                                                         @Override
                                                         public String toString() {
-                                                            // TODO Auto-generated method stub
                                                             return "KEY_DOES_NOT_EXIST";
                                                         }
                                                     };
@@ -608,22 +638,18 @@ public class Condition extends HashMap<String, Object> implements Storable {
 
     protected void putCache(final Object key, Object object) {
         if (useAccessCache) {
-            synchronized (this) {
-                final HashMap<Object, Object> newCache = new HashMap<Object, Object>(cache);
-                newCache.put(key, object);
-                cache = newCache;
-            }
+            final HashMap<Object, Object> newCache = new HashMap<Object, Object>(cache);
+            newCache.put(key, object);
+            cache = newCache;
         }
     }
 
     protected void clearCache() {
-        synchronized (this) {
-            if (cache.size() > 0) {
-                cache = new HashMap<Object, Object>();
-            }
-            if (accessCache.size() > 0) {
-                accessCache = new HashMap<Condition.KeyOnClass, Condition.AccessMethod>();
-            }
+        if (cache.size() > 0) {
+            cache = new HashMap<Object, Object>();
+        }
+        if (accessCache.size() > 0) {
+            accessCache = new HashMap<Condition.KeyOnClass, Condition.AccessMethod>();
         }
     }
 
@@ -637,11 +663,9 @@ public class Condition extends HashMap<String, Object> implements Storable {
 
     protected void putAccessMethod(final KeyOnClass key, AccessMethod method) {
         if (useAccessCache) {
-            synchronized (this) {
-                final HashMap<KeyOnClass, AccessMethod> newCache = new HashMap<KeyOnClass, AccessMethod>(accessCache);
-                newCache.put(key, method);
-                accessCache = newCache;
-            }
+            final HashMap<KeyOnClass, AccessMethod> newCache = new HashMap<KeyOnClass, AccessMethod>(accessCache);
+            newCache.put(key, method);
+            accessCache = newCache;
         }
     }
 
@@ -821,7 +845,6 @@ public class Condition extends HashMap<String, Object> implements Storable {
      */
     @Override
     public String toString() {
-        // TODO Auto-generated method stub
         return JSonStorage.serializeToJson(this);
     }
 
@@ -902,6 +925,7 @@ public class Condition extends HashMap<String, Object> implements Storable {
             if (accessMethod != null) {
                 try {
                     value = accessMethod.getValue(value, key);
+                    continue;
                 } catch (CannotGetValueException e) {
                     if (Boolean.TRUE.equals(get($IGNORE_GETTER_EXCEPTIONS))) {
                         return KEY_DOES_NOT_EXIST;
@@ -909,35 +933,40 @@ public class Condition extends HashMap<String, Object> implements Storable {
                         throw new CompareException(e);
                     }
                 }
-                continue;
             }
-            if (value instanceof ConditionMatchesRootObject) {
-                Object newValue = ((ConditionMatchesRootObject) value).get(key);
+            if (value instanceof ConditionObjectValueView) {
+                final ConditionObjectValueView view = (ConditionObjectValueView) value;
+                final Object newValue = view.getConditionObjectValue(key);
                 if (newValue == null) {
-                    if (((ConditionMatchesRootObject) value).containsKey(key)) {
+                    if (view.containsConditionObjectKey(key)) {
                         return null;
-                    } else {
+                    } else if (!view.isConditionObjectVisible()) {
                         return KEY_DOES_NOT_EXIST;
                     }
+                } else {
+                    value = newValue;
+                    continue;
                 }
-                value = newValue;
-                continue;
-            } else if (value instanceof Map) {
-                Object newValue = ((Map) value).get(key);
-                if (newValue == null) {
-                    if (((Map) value).containsKey(key)) {
-                        return null;
-                    } else {
+            }
+            if (value instanceof Map) {
+                accessMethod = new AccessMapElement();
+                putAccessMethod(cacheKey, accessMethod);
+                try {
+                    value = accessMethod.getValue(value, key);
+                    continue;
+                } catch (CannotGetValueException e) {
+                    if (Boolean.TRUE.equals(get($IGNORE_GETTER_EXCEPTIONS))) {
                         return KEY_DOES_NOT_EXIST;
+                    } else {
+                        throw new CompareException(e);
                     }
                 }
-                value = newValue;
-                continue;
             } else if (ReflectionUtils.isList(value)) {
                 accessMethod = new AccessListElement();
                 putAccessMethod(cacheKey, accessMethod);
                 try {
                     value = accessMethod.getValue(value, key);
+                    continue;
                 } catch (CannotGetValueException e) {
                     if (Boolean.TRUE.equals(get($IGNORE_GETTER_EXCEPTIONS))) {
                         return KEY_DOES_NOT_EXIST;
@@ -945,7 +974,6 @@ public class Condition extends HashMap<String, Object> implements Storable {
                         throw new CompareException(e);
                     }
                 }
-                continue;
             }
             // Search for methods that have the exact key name
             Class<? extends Object> cls = value.getClass();
@@ -970,9 +998,10 @@ public class Condition extends HashMap<String, Object> implements Storable {
                 // check getters with the key. get/is<Key>
                 cls = value.getClass();
                 method = null;
+                final String methodKey = Character.toUpperCase(key.charAt(0)) + key.substring(1);
                 while (cls != null) {
                     try {
-                        method = cls.getDeclaredMethod("is" + Character.toUpperCase(key.charAt(0)) + key.substring(1), EMPTY);
+                        method = cls.getDeclaredMethod("is" + methodKey, EMPTY);
                         if (isForbiddenMethod(method)) {
                             method = null;
                         } else {
@@ -982,10 +1011,10 @@ public class Condition extends HashMap<String, Object> implements Storable {
                         throw new CompareException("Cannot get value", e);
                     } catch (IllegalArgumentException e) {
                         throw new CompareException("Cannot get value", e);
-                    } catch (NoSuchMethodException e) {
+                    } catch (NoSuchMethodException ignore) {
                     }
                     try {
-                        method = cls.getDeclaredMethod("get" + Character.toUpperCase(key.charAt(0)) + key.substring(1), EMPTY);
+                        method = cls.getDeclaredMethod("get" + methodKey, EMPTY);
                         if (isForbiddenMethod(method)) {
                             method = null;
                         } else {
@@ -995,16 +1024,17 @@ public class Condition extends HashMap<String, Object> implements Storable {
                         throw new CompareException("Cannot get value", e);
                     } catch (IllegalArgumentException e) {
                         throw new CompareException("Cannot get value", e);
-                    } catch (NoSuchMethodException e) {
+                    } catch (NoSuchMethodException ignore) {
                     }
                     cls = cls.getSuperclass();
                 }
             }
             if (method != null) {
-                accessMethod = new AccessMyMethod(method);
+                accessMethod = new AccessByMethod(method);
                 putAccessMethod(cacheKey, accessMethod);
                 try {
                     value = accessMethod.getValue(value, key);
+                    continue;
                 } catch (CannotGetValueException e) {
                     if (Boolean.TRUE.equals(get($IGNORE_GETTER_EXCEPTIONS))) {
                         return KEY_DOES_NOT_EXIST;
@@ -1012,7 +1042,6 @@ public class Condition extends HashMap<String, Object> implements Storable {
                         throw new CompareException(e);
                     }
                 }
-                continue;
             }
             // check fields
             Field field = null;
@@ -1027,9 +1056,9 @@ public class Condition extends HashMap<String, Object> implements Storable {
                     }
                 } catch (SecurityException e) {
                     throw new CompareException("Cannot get value", e);
-                } catch (NoSuchFieldException e) {
                 } catch (IllegalArgumentException e) {
                     throw new CompareException("Cannot get value", e);
+                } catch (NoSuchFieldException ignore) {
                 }
                 cls = cls.getSuperclass();
             }
@@ -1038,6 +1067,7 @@ public class Condition extends HashMap<String, Object> implements Storable {
                 putAccessMethod(cacheKey, accessMethod);
                 try {
                     value = accessMethod.getValue(value, key);
+                    continue;
                 } catch (CannotGetValueException e) {
                     if (Boolean.TRUE.equals(get($IGNORE_GETTER_EXCEPTIONS))) {
                         return KEY_DOES_NOT_EXIST;
@@ -1045,7 +1075,6 @@ public class Condition extends HashMap<String, Object> implements Storable {
                         throw new CompareException(e);
                     }
                 }
-                continue;
             }
             if (useAccessCache) {
                 // only put Accessnotfound in the cache if the class it not a map or list and the key is not found in the class declaration.
@@ -1063,8 +1092,9 @@ public class Condition extends HashMap<String, Object> implements Storable {
     private boolean isForbiddenField(Field field) {
         if (!Modifier.isPublic(field.getModifiers())) {
             return true;
+        } else {
+            return false;
         }
-        return false;
     }
 
     /**
@@ -1074,11 +1104,11 @@ public class Condition extends HashMap<String, Object> implements Storable {
     private boolean isForbiddenMethod(Method method) {
         if (!Modifier.isPublic(method.getModifiers())) {
             return true;
-        }
-        if (Clazz.isVoid(method.getReturnType())) {
+        } else if (Clazz.isVoid(method.getReturnType())) {
             return true;
+        } else {
+            return false;
         }
-        return false;
     }
 
     public static final org.appwork.storage.TypeRef<Condition> TYPE = new org.appwork.storage.TypeRef<Condition>(Condition.class) {

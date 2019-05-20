@@ -56,7 +56,7 @@ public class Test extends Condition {
      *
      */
     public static class EmbededObject {
-        public ArrayList<String> list = new ArrayList<String>();
+        public ArrayList<String>   list  = new ArrayList<String>();
         {
             this.list.add("s1");
             this.list.add("s2");
@@ -66,8 +66,8 @@ public class Test extends Condition {
             this.list2.add(new String[] { "a", "b" });
             this.list2.add(new String[] { "a", "b" });
         }
-        private boolean b = false;
-        private boolean c = false;
+        private boolean            b     = false;
+        private boolean            c     = false;
 
         /**
          * @return the b
@@ -104,7 +104,7 @@ public class Test extends Condition {
         Condition con = new Condition("obj.b", false);
         long started = System.currentTimeMillis();
         boolean success = true;
-        for (int i = 0; i < 1000000; i++) {
+        for (int i = 0; i < 10000000; i++) {
             success &= con.matches(test);
         }
         System.out.println(success + " " + (System.currentTimeMillis() - started));
