@@ -550,6 +550,8 @@ public class JSonMapper {
             // e.printStackTrace();
             // } catch (final InvocationTargetException e) {
             // e.printStackTrace();
+        } catch (RuntimeException e) {
+            throw new MapperException(e);
         } finally {
         }
         return null;

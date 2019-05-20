@@ -262,7 +262,7 @@ public abstract class AbstractDialog<T> implements ActionListener, WindowListene
     protected int              flagMask;
     private Icon               icon;
     protected JLabel           iconLabel;
-    private boolean            initialized            = false;
+    private volatile boolean   initialized            = false;
     private DialogLocator      locator;
     protected JButton          okButton;
 

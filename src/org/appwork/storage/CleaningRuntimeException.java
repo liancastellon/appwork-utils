@@ -31,92 +31,18 @@
  *     If the AGPL does not fit your needs, please contact us. We'll find a solution.
  * ====================================================================================================================================================
  * ==================================================================================================================================================== */
-package org.appwork.txtresource;
-
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.Map.Entry;
-
-import org.appwork.storage.Storable;
+package org.appwork.storage;
 
 /**
  * @author Thomas
- * @date 11.05.2019
+ * @date 14.05.2019
  *
  */
-public class LocaleMap extends LinkedHashMap<String, String> implements Storable {
+public class CleaningRuntimeException extends RuntimeException {
     /**
-     *
+     * @param e
      */
-    public LocaleMap(String locale, String msg) {
-        this.put(locale, msg);
-    }
-
-    public LocaleMap append(String locale, String msg) {
-        put(locale, msg);
-        return this;
-    }
-
-    /**
-     *
-     */
-    public LocaleMap() {
-        // TODO Auto-generated constructor stub
-    }
-
-    /**
-     * @param string
-     */
-    public LocaleMap(String def) {
-        this("en", def);
-    }
-
-    public static String getBestMatch(HashMap<String, String> message) {
-        return getBestMatch(message, TranslationFactory.getDesiredLanguage());
-    }
-
-    /**
-     * Gets the translation with the best local match from message
-     *
-     * @param message
-     * @return
-     */
-    public static String getBestMatch(HashMap<String, String> message, String compare) {
-        if (message == null || message.size() == 0) {
-            return null;
-        }
-        String ret = message.get(compare);
-        if (ret == null) {
-            HashSet<String> variants = new HashSet<String>(TranslationFactory.getVariantsOf(compare));
-            String best = null;
-            String lng = null;
-            String first = null;
-            for (Entry<String, String> es : message.entrySet()) {
-                if (es.getValue() != null && first == null) {
-                    first = es.getValue();
-                }
-                for (String v : TranslationFactory.getVariantsOf(es.getKey())) {
-                    if (variants.contains(v) && (best == null || v.length() > best.length())) {
-                        best = v;
-                        lng = es.getKey();
-                    }
-                }
-            }
-            if (lng != null) {
-                ret = message.get(lng);
-            }
-            if (ret == null) {
-                ret = message.get("en");
-            }
-            if (ret == null) {
-                ret = first;
-            }
-        }
-        if (ret == null) {
-            return null;
-        }
-        ret = ret.trim();
-        return ret;
+    public CleaningRuntimeException(Throwable e) {
+        super(e);
     }
 }
