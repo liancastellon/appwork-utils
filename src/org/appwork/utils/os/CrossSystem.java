@@ -73,6 +73,7 @@ import org.appwork.utils.processes.ProcessBuilderFactory;
  * @author $Author: unknown$
  */
 public class CrossSystem {
+
     public static enum OperatingSystem {
         NETBSD(OSFamily.BSD),
         OPENBSD(OSFamily.BSD),
@@ -82,6 +83,38 @@ public class CrossSystem {
         BSD(OSFamily.BSD),
 
         LINUX(OSFamily.LINUX),
+        /*
+         * Fedora: List must be sorted by release Date!!
+         */
+        FEDORA(OSFamily.LINUX),
+        /*
+         * CentOS: List must be sorted by release Date!!
+         */
+        CENTOS(OSFamily.LINUX),
+        /*
+         * openSUSE: List must be sorted by release Date!!
+         */
+        OPENSUSE(OSFamily.LINUX),
+        /*
+         * Slackware: List must be sorted by release Date!!
+         */
+        SLACKWARE(OSFamily.LINUX),
+        /*
+         * Arch: List must be sorted by release Date!!
+         */
+        ARCH(OSFamily.LINUX),
+        /*
+         * Gentoo: List must be sorted by release Date!!
+         */
+        GENTOO(OSFamily.LINUX),
+        /*
+         * Red Hat: List must be sorted by release Date!!
+         */
+        REDHAT(OSFamily.LINUX),
+        /*
+         * SUSE Linux Enterprise Server: List must be sorted by release Date!!
+         */
+        SLES(OSFamily.LINUX),
         /*
          * https://www.debian.org/releases/
          *
@@ -821,6 +854,9 @@ public class CrossSystem {
         return null;
     }
 
+    /*
+     * https://gitlab.com/zygoon/os-release-zoo
+     */
     private static OperatingSystem getLinuxRelease(final String osName) {
         OperatingSystem ret = null;
         if (osName.contains("linux")) {
@@ -836,7 +872,23 @@ public class CrossSystem {
                                 String line = null;
                                 while ((line = is.readLine()) != null) {
                                     line = line.toLowerCase(Locale.ENGLISH);
-                                    if (line.contains("debian")) {
+                                    if (line.contains("sles")) {
+                                        return OperatingSystem.SLES;
+                                    } else if (line.contains("red hat")) {
+                                        return OperatingSystem.REDHAT;
+                                    } else if (line.contains("gentoo")) {
+                                        return OperatingSystem.GENTOO;
+                                    } else if (line.contains("arch linux")) {
+                                        return OperatingSystem.ARCH;
+                                    } else if (line.contains("slackware")) {
+                                        return OperatingSystem.SLACKWARE;
+                                    } else if (line.contains("opensuse")) {
+                                        return OperatingSystem.OPENSUSE;
+                                    } else if (line.contains("centos")) {
+                                        return OperatingSystem.CENTOS;
+                                    } else if (line.contains("fedora")) {
+                                        return OperatingSystem.FEDORA;
+                                    } else if (line.contains("debian")) {
                                         ret = OperatingSystem.DEBIAN;
                                         if (line.contains("buster")) {
                                             return OperatingSystem.DEBIAN_BUSTER;

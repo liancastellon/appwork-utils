@@ -81,6 +81,7 @@ import org.appwork.utils.net.PublicSuffixList;
 import org.appwork.utils.net.SocketFactory;
 import org.appwork.utils.net.StreamValidEOF;
 import org.appwork.utils.net.httpconnection.HTTPConnectionUtils.IPVERSION;
+import org.appwork.utils.net.httpconnection.NetworkInterfaceException.ERROR;
 import org.appwork.utils.os.CrossSystem;
 import org.appwork.utils.parser.UrlQuery;
 
@@ -607,9 +608,9 @@ public class HTTPConnectionImpl implements HTTPConnection {
                 }
                 final NetworkInterface netif = NetworkInterface.getByName(ifName);
                 if (netif == null) {
-                    throw new ProxyConnectException("No such networkinterface: " + interfaceName, proxy);
+                    throw new NetworkInterfaceException(ERROR.INTERFACE_NOT_FOUND, ifName, proxy);
                 } else if (!netif.isUp()) {
-                    throw new ProxyConnectException("Unconnected networkinterface: " + interfaceName, proxy);
+                    throw new NetworkInterfaceException(ERROR.INTERFACE_NOT_CONNECTED, ifName, proxy);
                 } else {
                     if (subInterface) {
                         final HashSet<InetAddress> ret = new HashSet<InetAddress>();
@@ -618,7 +619,7 @@ public class HTTPConnectionImpl implements HTTPConnection {
                             final NetworkInterface subNetworkInterface = subNetworkInterfaces.nextElement();
                             if (subNetworkInterface != null && interfaceName.equals(subNetworkInterface.getName())) {
                                 if (!subNetworkInterface.isUp()) {
-                                    throw new ProxyConnectException("Unconnected networkinterface: " + interfaceName, proxy);
+                                    throw new NetworkInterfaceException(ERROR.INTERFACE_NOT_CONNECTED, interfaceName, proxy);
                                 }
                                 final Enumeration<InetAddress> inetAddresses = subNetworkInterface.getInetAddresses();
                                 while (inetAddresses.hasMoreElements()) {
@@ -630,11 +631,11 @@ public class HTTPConnectionImpl implements HTTPConnection {
                                 if (ret.size() > 0) {
                                     return ret.toArray(new InetAddress[0]);
                                 } else {
-                                    throw new ProxyConnectException("Unsupported networkinterface: " + interfaceName, proxy);
+                                    throw new NetworkInterfaceException(ERROR.INTERFACE_NOT_SUPPORTED, interfaceName, proxy);
                                 }
                             }
                         }
-                        throw new ProxyConnectException("Unsupported networkinterface: " + interfaceName, proxy);
+                        throw new NetworkInterfaceException(ERROR.INTERFACE_NOT_SUPPORTED, interfaceName, proxy);
                     } else {
                         /**
                          * root.getInetAddresses contains all InetAddress (rootInterface+subInterfaces), so we have to filter out
@@ -666,7 +667,7 @@ public class HTTPConnectionImpl implements HTTPConnection {
                         if (ret.size() > 0) {
                             return ret.toArray(new InetAddress[0]);
                         } else {
-                            throw new ProxyConnectException("Unsupported networkinterface: " + interfaceName, proxy);
+                            throw new NetworkInterfaceException(ERROR.INTERFACE_NOT_SUPPORTED, interfaceName, proxy);
                         }
                     }
                 }
@@ -687,7 +688,7 @@ public class HTTPConnectionImpl implements HTTPConnection {
                 } catch (final Throwable ignore) {
                 }
                 connectExceptions.add("Bind: " + bindInetAddress + "|" + e.getMessage());
-                throw new ProxyConnectException(e, getProxy());
+                throw new NetworkInterfaceException(ERROR.INTERFACE_BIND_ERROR, bindInetAddress.toString(), getProxy(), e);
             }
         }
         // socket.setSoTimeout(readTimeout);
