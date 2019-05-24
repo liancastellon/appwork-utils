@@ -377,6 +377,7 @@ public class HTTPConnectionUtils {
                 try {
                     Thread.sleep(500);
                 } catch (final InterruptedException e1) {
+                    Thread.currentThread().interrupt();
                     break;
                 }
             }
