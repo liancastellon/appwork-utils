@@ -770,9 +770,11 @@ public class HTTPConnectionImpl implements HTTPConnection {
             if (!isHostnameResolved()) {
                 setHostname(resolveHostname(this.httpURL.getHost()));
             }
-            this.connectionSocket = this.getKeepAliveSocket(false);
-            if (this.connectionSocket == null) {
-                this.connectionSocket = this.getKeepAliveSocket(true);
+            if (isKeepAlivedEnabled()) {
+                this.connectionSocket = this.getKeepAliveSocket(false);
+                if (this.connectionSocket == null) {
+                    this.connectionSocket = this.getKeepAliveSocket(true);
+                }
             }
             if (this.connectionSocket == null) {
                 /* try all different ip's until one is valid and connectable */
