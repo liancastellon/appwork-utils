@@ -770,7 +770,7 @@ public class HTTPConnectionImpl implements HTTPConnection {
             if (!isHostnameResolved()) {
                 setHostname(resolveHostname(this.httpURL.getHost()));
             }
-            if (isKeepAlivedEnabled()) {
+            if (!KEEPALIVE.DISABLED.equals(getKeepAlive())) {
                 this.connectionSocket = this.getKeepAliveSocket(false);
                 if (this.connectionSocket == null) {
                     this.connectionSocket = this.getKeepAliveSocket(true);
