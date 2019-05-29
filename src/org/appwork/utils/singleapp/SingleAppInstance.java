@@ -232,7 +232,7 @@ public class SingleAppInstance {
                     runninginstance = new Socket();
                     final InetSocketAddress con = new InetSocketAddress(this.getLocalHost(), port);
                     runninginstance.connect(con, 1000);
-                    runninginstance.setSoTimeout(2000);/* set Timeout */
+                    runninginstance.setSoTimeout(5000);/* set Timeout */
                     final BufferedInputStream in = new BufferedInputStream(runninginstance.getInputStream());
                     final OutputStream out = runninginstance.getOutputStream();
                     final String response = this.readLine(in);
@@ -286,31 +286,6 @@ public class SingleAppInstance {
 
     public synchronized void setInstanceMessageListener(final InstanceMessageListener listener) {
         this.listener = listener;
-    }
-
-    public static void main(String[] args) throws Exception {
-        Application.setApplication(".test");
-        SingleAppInstance test = new SingleAppInstance("test");
-        test.setInstanceMessageListener(new InstanceMessageListener() {
-            @Override
-            public void parseMessage(String[] message) {
-                System.out.println(message);
-            }
-        });
-        test.start();
-        SingleAppInstance test2 = new SingleAppInstance("test");
-        test2.setInstanceMessageListener(new InstanceMessageListener() {
-            @Override
-            public void parseMessage(String[] message) {
-                System.out.println(message);
-            }
-        });
-        try {
-            test2.start();
-        } catch (AnotherInstanceRunningException e) {
-            test2.sendToRunningInstance(new String[] { "test" });
-        }
-        Thread.sleep(10000);
     }
 
     public synchronized void start() throws AnotherInstanceRunningException, UncheckableInstanceException {
@@ -392,56 +367,57 @@ public class SingleAppInstance {
                         if (Thread.currentThread().isInterrupted()) {
                             break;
                         }
-                        Socket client = null;
                         try {
                             /* accept new request */
-                            client = SingleAppInstance.this.serverSocket.accept();
-                            client.setSoTimeout(10000);/* set Timeout */
-                            final BufferedInputStream in = new BufferedInputStream(client.getInputStream());
-                            final OutputStream out = client.getOutputStream();
-                            SingleAppInstance.this.writeLine(out, createID(SingleAppInstance.this.singleApp, appID, Application.getRoot(SingleAppInstance.class)));
-                            String line = SingleAppInstance.this.readLine(in);
-                            if (line != null && line.length() > 0) {
-                                if (line.matches("^\\d+$")) {
-                                    final int lines = Integer.parseInt(line);
-                                    if (lines != 0) {
-                                        final String[] message = new String[lines];
-                                        for (int index = 0; index < lines; index++) {
-                                            message[index] = SingleAppInstance.this.readLine(in);
-                                        }
-                                        if (SingleAppInstance.this.listener != null) {
-                                            try {
-                                                SingleAppInstance.this.listener.parseMessage(message);
-                                            } catch (final Throwable e) {
-                                                org.appwork.loggingv3.LogV3.log(e);
+                            final Socket client = SingleAppInstance.this.serverSocket.accept();
+                            new Thread("SingleAppInstanceClient: " + SingleAppInstance.this.appID) {
+                                {
+                                    setDaemon(true);
+                                }
+
+                                public void run() {
+                                    try {
+                                        client.setSoTimeout(10000);/* set Timeout */
+                                        final BufferedInputStream in = new BufferedInputStream(client.getInputStream());
+                                        final OutputStream out = client.getOutputStream();
+                                        SingleAppInstance.this.writeLine(out, createID(SingleAppInstance.this.singleApp, appID, Application.getRoot(SingleAppInstance.class)));
+                                        String line = SingleAppInstance.this.readLine(in);
+                                        if (line != null && line.length() > 0) {
+                                            if (line.matches("^\\d+$")) {
+                                                final int lines = Integer.parseInt(line);
+                                                if (lines != 0) {
+                                                    final String[] message = new String[lines];
+                                                    for (int index = 0; index < lines; index++) {
+                                                        message[index] = SingleAppInstance.this.readLine(in);
+                                                    }
+                                                    if (SingleAppInstance.this.listener != null) {
+                                                        try {
+                                                            SingleAppInstance.this.listener.parseMessage(message);
+                                                        } catch (final Throwable e) {
+                                                            org.appwork.loggingv3.LogV3.log(e);
+                                                        }
+                                                    }
+                                                }
+                                            } else {
+                                                org.appwork.loggingv3.LogV3.info("invalid SingleAppInstanceClient message:" + line);
+                                                while ((line = SingleAppInstance.this.readLine(in)) != null) {
+                                                    org.appwork.loggingv3.LogV3.info("invalid SingleAppInstanceClient message:" + line);
+                                                }
                                             }
                                         }
+                                    } catch (IOException e) {
+                                        org.appwork.loggingv3.LogV3.log(e);
+                                    } finally {
+                                        try {
+                                            client.close();
+                                        } catch (IOException ignore) {
+                                        }
                                     }
-                                } else {
-                                    org.appwork.loggingv3.LogV3.info("invalid SingleAppInstanceClient message:" + line);
-                                    while ((line = SingleAppInstance.this.readLine(in)) != null) {
-                                        org.appwork.loggingv3.LogV3.info("invalid SingleAppInstanceClient message:" + line);
-                                    }
-                                }
-                            }
+                                };
+                            }.start();
                         } catch (final IOException e) {
                             if (Thread.currentThread() == SingleAppInstance.this.daemon.get()) {
                                 org.appwork.loggingv3.LogV3.log(e);
-                            }
-                        } finally {
-                            if (client != null) {
-                                try {
-                                    client.shutdownInput();
-                                } catch (final Throwable e) {
-                                }
-                                try {
-                                    client.shutdownOutput();
-                                } catch (final Throwable e) {
-                                }
-                                try {
-                                    client.close();
-                                } catch (final Throwable e) {
-                                }
                             }
                         }
                     }
@@ -453,7 +429,7 @@ public class SingleAppInstance {
                 }
             }
         });
-        daemon.setName("SingleAppInstance: " + this.appID);
+        daemon.setName("SingleAppInstanceServer: " + this.appID);
         /* set daemonmode so java does not wait for this thread */
         daemon.setDaemon(true);
         this.daemon.set(daemon);
