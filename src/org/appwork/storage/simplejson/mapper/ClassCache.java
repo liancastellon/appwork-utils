@@ -36,10 +36,13 @@ package org.appwork.storage.simplejson.mapper;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.WeakHashMap;
 
 import org.appwork.loggingv3.LogV3;
 import org.appwork.storage.simplejson.Ignore;
@@ -50,9 +53,9 @@ import org.appwork.storage.simplejson.Ignores;
  *
  */
 public class ClassCache {
-    private static final HashMap<Class<?>, ClassCache> CACHE        = new HashMap<Class<?>, ClassCache>();
-    private static final Object[]                      EMPTY_OBJECT = new Object[] {};
-    private static final Class<?>[]                    EMPTY_TYPES  = new Class[] {};
+    private static final WeakHashMap<Class<?>, ClassCache> CACHE        = new WeakHashMap<Class<?>, ClassCache>();
+    private static final Object[]                          EMPTY_OBJECT = new Object[] {};
+    private static final Class<?>[]                        EMPTY_TYPES  = new Class[] {};
 
     protected static ClassCache create(final Class<? extends Object> clazz) throws SecurityException, NoSuchMethodException {
         return create(clazz, null);
@@ -149,6 +152,54 @@ public class ClassCache {
     }
 
     /**
+     * @return the parameterizedTypesMap
+     */
+    private HashMap<Class, ParameterizedType> getParameterizedTypesMap() {
+        if (parameterizedTypesMap == null) {
+            initTypeHirarchy();
+        }
+        return parameterizedTypesMap;
+    }
+
+    /**
+     * @return
+     */
+    private void initTypeHirarchy() {
+        HashMap<Class, ParameterizedType> parameterizedTypesMap = new HashMap<Class, ParameterizedType>();
+        HashMap<Type, Type> extendedTypesMap = new HashMap<Type, Type>();
+        Type start = clazz;
+        while (true) {
+            Type sClass = null;
+            if (start instanceof Class) {
+                sClass = ((Class) start).getGenericSuperclass();
+                extendedTypesMap.put(sClass, start);
+            } else if (start instanceof ParameterizedType) {
+                Type r = ((ParameterizedType) start).getRawType();
+                if (r instanceof Class) {
+                    sClass = ((Class) r).getGenericSuperclass();
+                    parameterizedTypesMap.put((Class) r, (ParameterizedType) start);
+                    extendedTypesMap.put(sClass, start);
+                } else {
+                    LogV3.I().getDefaultLogger().log(new Exception("This should not happen. " + clazz));
+                    extendedTypesMap.put(r, start);
+                }
+            } else {
+                // GenericArrayType
+                // TypeVariable
+            }
+            if (sClass != null && sClass instanceof ParameterizedType) {
+                extendedTypesMap.put(((ParameterizedType) sClass).getRawType(), start);
+            }
+            if (sClass == null) {
+                break;
+            }
+            start = sClass;
+        }
+        this.extendedTypesMap = extendedTypesMap;
+        this.parameterizedTypesMap = parameterizedTypesMap;
+    }
+
+    /**
      *
      * Jackson maps methodnames to keys like this. setID becomes key "id" , setMethodName becomes "methodName". To keep compatibility
      * between jackson and simplemapper, we should do it the same way
@@ -177,7 +228,7 @@ public class ClassCache {
      * @throws NoSuchMethodException
      * @throws SecurityException
      */
-    public static ClassCache getClassCache(final Class<? extends Object> clazz) throws SecurityException, NoSuchMethodException {
+    public synchronized static ClassCache getClassCache(final Class<? extends Object> clazz) throws SecurityException, NoSuchMethodException {
         ClassCache cc = ClassCache.CACHE.get(clazz);
         if (cc == null) {
             LogV3.logger(ClassCache.class).finer("ClassCache: " + clazz);
@@ -187,12 +238,14 @@ public class ClassCache {
         return cc;
     }
 
-    protected Constructor<? extends Object> constructor;
-    protected final Class<? extends Object> clazz;
-    protected final java.util.List<Getter>  getter;
-    protected final java.util.List<Setter>  setter;
-    protected final HashMap<String, Getter> getterMap;
-    protected final HashMap<String, Setter> setterMap;
+    protected Constructor<? extends Object>   constructor;
+    protected final Class<? extends Object>   clazz;
+    protected final java.util.List<Getter>    getter;
+    protected final java.util.List<Setter>    setter;
+    protected final HashMap<String, Getter>   getterMap;
+    protected final HashMap<String, Setter>   setterMap;
+    private HashMap<Type, Type>               extendedTypesMap;
+    private HashMap<Class, ParameterizedType> parameterizedTypesMap;
 
     /**
      * @param clazz
@@ -203,6 +256,16 @@ public class ClassCache {
         setter = new ArrayList<Setter>();
         getterMap = new HashMap<String, Getter>();
         setterMap = new HashMap<String, Setter>();
+    }
+
+    /**
+     * @return the parentsMap
+     */
+    private HashMap<Type, Type> getExtendedTypesMap() {
+        if (extendedTypesMap == null) {
+            initTypeHirarchy();
+        }
+        return extendedTypesMap;
     }
 
     public java.util.List<Getter> getGetter() {
@@ -233,14 +296,6 @@ public class ClassCache {
     }
 
     /**
-     * @param class1
-     * @param stackTraceElementClassCache
-     */
-    public static void put(final Class<?> class1, final ClassCache stackTraceElementClassCache) {
-        CACHE.put(class1, stackTraceElementClassCache);
-    }
-
-    /**
      * @return
      */
     public Set<String> getKeys() {
@@ -248,5 +303,27 @@ public class ClassCache {
         ret.addAll(getterMap.keySet());
         ret.addAll(setterMap.keySet());
         return ret;
+    }
+
+    /**
+     * If the parameter cls is type of this classcache (is part of the class hirarchy), this will return the parameterized instance.<br>
+     *
+     * example: A extends B<String> getParameterizedType(B.class) =B<String>
+     *
+     * @param cls
+     * @return
+     */
+    public ParameterizedType getParameterizedType(Class cls) {
+        return getParameterizedTypesMap().get(cls);
+    }
+
+    /**
+     * Gets the extended Type. example: class A extends B -> getExtendedType(B.class) = A.class
+     *
+     * @param cls
+     * @return
+     */
+    public Type getExtendedType(Class cls) {
+        return getExtendedTypesMap().get(cls);
     }
 }

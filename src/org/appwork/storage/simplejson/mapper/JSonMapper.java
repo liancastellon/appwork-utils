@@ -503,13 +503,25 @@ public class JSonMapper {
                             value = es.getValue();
                             //
                             Type fieldType = s.getType();
+                            // this loop searches the next actual generic type. to find the actual field type.
+                            // this loop solves situations like public class KeyValueStringEntry extends KeyValueEntry<String, String>,
                             // special handling for generic fields
-                            if (fieldType instanceof TypeVariable) {
-                                final Type[] actualTypes = ((ParameterizedType) type).getActualTypeArguments();
-                                final TypeVariable<?>[] genericTypes = clazz.getTypeParameters();
-                                for (int i = 0; i < genericTypes.length; i++) {
-                                    if (StringUtils.equals(((TypeVariable) fieldType).getName(), genericTypes[i].getName())) {
-                                        fieldType = actualTypes[i];
+                            Class cls = s.getMethod().getDeclaringClass();
+                            while (fieldType instanceof TypeVariable) {
+                                ParameterizedType parameterized = cc.getParameterizedType(cls);
+                                Type[] actual = parameterized.getActualTypeArguments();
+                                TypeVariable[] types = cls.getTypeParameters();
+                                for (int i = 0; i < types.length; i++) {
+                                    if (StringUtils.equals(((TypeVariable) fieldType).getName(), types[i].getName())) {
+                                        fieldType = actual[i];
+                                        Type extendingClass = cc.getExtendedType(cls);
+                                        if (extendingClass != null) {
+                                            if (extendingClass instanceof Class) {
+                                                cls = (Class) extendingClass;
+                                            } else {
+                                                cls = (Class) ((ParameterizedType) extendingClass).getRawType();
+                                            }
+                                        }
                                         break;
                                     }
                                 }
