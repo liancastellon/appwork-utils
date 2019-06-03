@@ -2,7 +2,7 @@ package org.appwork.utils;
 
 import java.util.Map.Entry;
 
-public class KeyValueEntry<KeyType, ValueType> {
+public class KeyValueEntry<KeyType, ValueType> extends ValueEntry<ValueType> {
     private KeyType key;
 
     public KeyType getKey() {
@@ -13,16 +13,6 @@ public class KeyValueEntry<KeyType, ValueType> {
         this.key = key;
     }
 
-    public ValueType getValue() {
-        return value;
-    }
-
-    public void setValue(ValueType value) {
-        this.value = value;
-    }
-
-    private ValueType value;
-
     /*
      * (non-Javadoc)
      *
@@ -30,7 +20,7 @@ public class KeyValueEntry<KeyType, ValueType> {
      */
     @Override
     public String toString() {
-        return key + "=" + value;
+        return key + "=" + getValue();
     }
 
     /**
@@ -39,7 +29,7 @@ public class KeyValueEntry<KeyType, ValueType> {
      */
     public KeyValueEntry(KeyType key, ValueType value) {
         this.key = key;
-        this.value = value;
+        setValue(value);
     }
 
     /**

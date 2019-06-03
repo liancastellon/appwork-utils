@@ -10,7 +10,7 @@
  *         Germany
  * === Preamble ===
  *     This license establishes the terms under which the [The Product] Source Code & Binary files may be used, copied, modified, distributed, and/or redistributed.
- *     The intent is that the AppWork GmbH is able to provide their utilities library for free to non-commercial projects whereas commercial usage is only permitted after obtaining a commercial license.
+ *     The intent is that the AppWork GmbH is able to provide  their utilities library for free to non-commercial projects whereas commercial usage is only permitted after obtaining a commercial license.
  *     These terms apply to all files that have the [The Product] License header (IN the file), a <filename>.license or <filename>.info (like mylib.jar.info) file that contains a reference to this license.
  *
  * === 3rd Party Licences ===
@@ -19,11 +19,11 @@
  *
  * === Definition: Commercial Usage ===
  *     If anybody or any organization is generating income (directly or indirectly) by using [The Product] or if there's any commercial interest or aspect in what you are doing, we consider this as a commercial usage.
- *     If your use-case is neither strictly private nor strictly educational, it is commercial. If you are unsure whether your use-case is commercial or not, consider it as commercial or contact us.
+ *     If your use-case is neither strictly private nor strictly educational, it is commercial. If you are unsure whether your use-case is commercial or not, consider it as commercial or contact as.
  * === Dual Licensing ===
  * === Commercial Usage ===
  *     If you want to use [The Product] in a commercial way (see definition above), you have to obtain a paid license from AppWork GmbH.
- *     Contact AppWork for further details: <e-mail@appwork.org>
+ *     Contact AppWork for further details: e-mail@appwork.org
  * === Non-Commercial Usage ===
  *     If there is no commercial usage (see definition above), you may use [The Product] under the terms of the
  *     "GNU Affero General Public License" (http://www.gnu.org/licenses/agpl-3.0.en.html).
@@ -31,41 +31,21 @@
  *     If the AGPL does not fit your needs, please contact us. We'll find a solution.
  * ====================================================================================================================================================
  * ==================================================================================================================================================== */
-package org.appwork.storage.simplejson.mapper.test;
-
-import org.appwork.storage.JSonStorage;
-import org.appwork.storage.simplejson.JSonNode;
-import org.appwork.storage.simplejson.ParserException;
-import org.appwork.storage.simplejson.mapper.JSonMapper;
-import org.appwork.storage.simplejson.mapper.MapperException;
-import org.appwork.utils.Application;
-import org.appwork.utils.CompareUtils;
+package org.appwork.utils;
 
 /**
- * @author thomas
+ * @author Thomas
+ * @date 29.05.2019
  *
  */
-public class CompareTest {
-    /**
-     * @return
-     */
-    private static Object create() {
-        TestClass ret = null;
-        ret = TestClass.createObject();
-        // ret = new TestClass();
-        ret.getList().add(1);
-        return ret;
+public class ValueEntry<ValueType2> {
+    public ValueType2 getValue() {
+        return value;
     }
 
-    public static void main(final String[] args) throws MapperException, ParserException {
-        Application.setApplication(".test");
-        final JSonMapper mapper = new JSonMapper();
-        final Object obj = CompareTest.create();
-        final JSonNode json = mapper.create(obj);
-        final String jsonString = json.toString();
-        final TestClass re = (TestClass) mapper.jsonToObject(json, TestClass.class);
-        // prints true if mapperloop succeeded
-        System.out.println("SUCCESS: " + JSonStorage.serializeToJson(obj).equals(JSonStorage.serializeToJson(re)));
-        System.out.println("SUCCESS: " + CompareUtils.equalsDeep(obj, re));
+    public void setValue(ValueType2 value) {
+        this.value = value;
     }
+
+    private ValueType2 value;
 }
