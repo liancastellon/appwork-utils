@@ -1,9 +1,13 @@
 package org.appwork.utils;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.appwork.exceptions.WTFException;
+import org.appwork.storage.simplejson.mapper.ClassCache;
+import org.appwork.storage.simplejson.mapper.Getter;
 import org.appwork.utils.reflection.Clazz;
 
 public class CompareUtils {
@@ -119,6 +123,9 @@ public class CompareUtils {
             return false;
         } else if (objectY == null) {
             return false;
+        } else if (objectX.equals(objectY)) {
+            // if equals says these objects equal, we trust
+            return true;
         } else if (ReflectionUtils.isList(objectX) && ReflectionUtils.isList(objectY)) {
             final int l1 = ReflectionUtils.getListLength(objectX);
             final int l2 = ReflectionUtils.getListLength(objectY);
@@ -132,8 +139,39 @@ public class CompareUtils {
                 }
                 return true;
             }
+        } else if (objectX instanceof Map && objectY instanceof Map) {
+            for (Entry<?, ?> es : ((Map<?, ?>) objectX).entrySet()) {
+                if (!equalsDeep(es.getValue(), ((Map<?, ?>) objectY).get(es.getKey()))) {
+                    return false;
+                }
+            }
+            return true;
+        } else if (objectX.getClass() == objectY.getClass()) {
+            if (Clazz.isPrimitive(objectX.getClass())) {
+                // if true, this would have exited in the } else if (objectX.equals(objectY)) { block above
+                return false;
+            }
+            ClassCache cc;
+            try {
+                cc = ClassCache.getClassCache(objectX.getClass());
+                for (Getter c : cc.getGetter()) {
+                    if (!equalsDeep(c.getValue(objectX), c.getValue(objectY))) {
+                        return false;
+                    }
+                }
+                return true;
+            } catch (SecurityException e) {
+                throw new WTFException(e);
+            } catch (NoSuchMethodException e) {
+                throw new WTFException(e);
+            } catch (IllegalArgumentException e) {
+                throw new WTFException(e);
+            } catch (IllegalAccessException e) {
+                throw new WTFException(e);
+            } catch (InvocationTargetException e) {
+                throw new WTFException(e);
+            }
         } else {
-            // TODO:other data types like LISTS
             return objectX.equals(objectY);
         }
     }
