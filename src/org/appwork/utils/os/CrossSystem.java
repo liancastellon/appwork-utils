@@ -174,6 +174,7 @@ public class CrossSystem {
         MAC_SIERRA(OSFamily.MAC), // 10.12
         MAC_HIGH_SIERRA(OSFamily.MAC), // 10.13
         MAC_MOJAVE(OSFamily.MAC), // 10.14
+        MAC_CATALINA(OSFamily.MAC), // 10.15
         /*
          * OS2
          */
@@ -794,7 +795,9 @@ public class CrossSystem {
             final String os = osName.toLowerCase(Locale.ENGLISH);
             if (os.contains("mac") || os.contains("darwin")) {
                 final long version = parseMacOSVersion(osVersion);
-                if (version >= 10014000) {
+                if (version >= 10015000) {
+                    return OperatingSystem.MAC_CATALINA;
+                } else if (version >= 10014000) {
                     return OperatingSystem.MAC_MOJAVE;
                 } else if (version >= 10013000) {
                     return OperatingSystem.MAC_HIGH_SIERRA;
