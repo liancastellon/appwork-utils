@@ -36,6 +36,7 @@ package org.appwork.utils.ImageProvider;
 import java.awt.Color;
 import java.awt.Composite;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GraphicsEnvironment;
@@ -47,6 +48,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Locale;
@@ -66,6 +68,7 @@ import org.appwork.storage.config.MinTimeWeakReference;
 import org.appwork.storage.config.MinTimeWeakReferenceCleanup;
 import org.appwork.sunwrapper.sun.awt.image.ToolkitImageWrapper;
 import org.appwork.utils.Application;
+import org.appwork.utils.Exceptions;
 import org.appwork.utils.URLStream;
 
 /**
@@ -81,22 +84,22 @@ public class ImageProvider {
      */
     private static HashMap<String, MinTimeWeakReference<BufferedImage>> IMAGE_CACHE             = new HashMap<String, MinTimeWeakReference<BufferedImage>>();
     private static MinTimeWeakReferenceCleanup                          IMAGE_CACHE_CLEANUP     = new MinTimeWeakReferenceCleanup() {
-        @Override
-        public void onMinTimeWeakReferenceCleanup(final MinTimeWeakReference<?> minTimeWeakReference) {
-            synchronized (ImageProvider.LOCK) {
-                ImageProvider.IMAGE_CACHE.remove(minTimeWeakReference.getID());
-            }
-        }
-    };
+                                                                                                    @Override
+                                                                                                    public void onMinTimeWeakReferenceCleanup(final MinTimeWeakReference<?> minTimeWeakReference) {
+                                                                                                        synchronized (ImageProvider.LOCK) {
+                                                                                                            ImageProvider.IMAGE_CACHE.remove(minTimeWeakReference.getID());
+                                                                                                        }
+                                                                                                    }
+                                                                                                };
     private static HashMap<String, MinTimeWeakReference<ImageIcon>>     IMAGEICON_CACHE         = new HashMap<String, MinTimeWeakReference<ImageIcon>>();
     private static MinTimeWeakReferenceCleanup                          IMAGEICON_CACHE_CLEANUP = new MinTimeWeakReferenceCleanup() {
-        @Override
-        public void onMinTimeWeakReferenceCleanup(final MinTimeWeakReference<?> minTimeWeakReference) {
-            synchronized (ImageProvider.LOCK) {
-                ImageProvider.IMAGEICON_CACHE.remove(minTimeWeakReference.getID());
-            }
-        }
-    };
+                                                                                                    @Override
+                                                                                                    public void onMinTimeWeakReferenceCleanup(final MinTimeWeakReference<?> minTimeWeakReference) {
+                                                                                                        synchronized (ImageProvider.LOCK) {
+                                                                                                            ImageProvider.IMAGEICON_CACHE.remove(minTimeWeakReference.getID());
+                                                                                                        }
+                                                                                                    }
+                                                                                                };
     private static WeakHashMap<Icon, MinTimeWeakReference<Icon>>        DISABLED_ICON_CACHE     = new WeakHashMap<Icon, MinTimeWeakReference<Icon>>();
     private static Object                                               LOCK                    = new Object();
     // stringbuilder die concat strings fast
@@ -116,7 +119,7 @@ public class ImageProvider {
                 tmp = new Color(bufferedImage.getRGB(x, y));
                 // val = (int) (tmp.getRed()+tmp.getGreen()+tmp.getBlue())/3;
                 // val =
-                        // Math.max(tmp.getRed(),Math.max(tmp.getGreen(),tmp.getBlue()));
+                // Math.max(tmp.getRed(),Math.max(tmp.getGreen(),tmp.getBlue()));
                 val = (int) (tmp.getRed() * 0.3 + tmp.getGreen() * 0.59 + tmp.getBlue() * 0.11);
                 dest.setRGB(x, y, alpha | val | val << 8 & 0x0000FF00 | val << 16 & 0x00FF0000);
             }
@@ -169,7 +172,7 @@ public class ImageProvider {
             try {
                 final String fontName = getDrawFontName();
                 g.setFont(new Font(fontName, Font.BOLD, size));
-                g.getFontMetrics();// check for missing fonts/headless java
+                final FontMetrics fontMetrics = g.getFontMetrics();// check for missing fonts/headless java
                 g.setColor(Color.WHITE);
                 g.fillRect(0, 0, w - 1, h - 1);
                 g.draw3DRect(0, 0, w - 1, h - 1, true);
@@ -180,25 +183,26 @@ public class ImageProvider {
                 while (size > 0) {
                     size--;
                     g.setFont(new Font(fontName, Font.BOLD, size));
-                    ww = g.getFontMetrics().stringWidth(string);
-                    hh = g.getFontMetrics().getAscent();
+                    ww = fontMetrics.stringWidth(string);
+                    hh = fontMetrics.getAscent();
                     if (ww < w - 4 && hh < h - 2) {
                         break;
                     }
                 }
                 g.drawString(string, (w - ww) / 2, hh + (h - hh) / 2);
                 return image;
-            } catch (NullPointerException e) {
-                // java.lang.NullPointerException
+            } catch (Exception e) {
+                // java.lang.NullPointerException or java.lang.reflect.InvocationTargetException(jdk12)
                 // at sun.awt.FontConfiguration.getVersion(FontConfiguration.java:1264)
                 // at sun.awt.FontConfiguration.readFontConfigFile(FontConfiguration.java:219)
                 // at sun.awt.FontConfiguration.init(FontConfiguration.java:107)
-                if (!Application.isHeadless()) {
-                    throw e;
+                if (Application.isHeadless() && (Exceptions.getInstanceof(e, NullPointerException.class) != null || Exceptions.getInstanceof(e, InvocationTargetException.class) != null)) {
+                    g.setColor(Color.RED);
+                    g.fillRect(0, 0, w - 1, h - 1);
+                    return image;
+                } else {
+                    throw new RuntimeException(e);
                 }
-                g.setColor(Color.RED);
-                g.fillRect(0, 0, w - 1, h - 1);
-                return image;
             }
         } finally {
             g.dispose();
