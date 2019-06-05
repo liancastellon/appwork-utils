@@ -191,7 +191,7 @@ public class ImageProvider {
                 }
                 g.drawString(string, (w - ww) / 2, hh + (h - hh) / 2);
                 return image;
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 // java.lang.NullPointerException or java.lang.reflect.InvocationTargetException(jdk12)
                 // at sun.awt.FontConfiguration.getVersion(FontConfiguration.java:1264)
                 // at sun.awt.FontConfiguration.readFontConfigFile(FontConfiguration.java:219)
