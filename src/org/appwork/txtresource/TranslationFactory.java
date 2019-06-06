@@ -249,17 +249,8 @@ public class TranslationFactory {
         return sb.toString();
     }
 
-    public static void main(final String[] args) {
-        // Locale.setDefault(TranslationFactory.getDesiredLocale());
-        // System.out.println(TranslationFactory.getDesiredLocale().getDisplayCountry());
-        // final Translate t = TranslationFactory.create(Translate.class);
-        // System.out.println(t.getTestText());
-        // System.out.println(t.getOrderedText(1, 7, 23, 5));
-        // System.out.println(t._getTranslation("en", "getOrderedText", 1, 3, 5,
-        // 8));
-        // System.err.println(t._createFile("en", true));
-        System.out.println(new Locale("zh", "DE", "hans").getDisplayName());
-        System.out.println(Locale.TRADITIONAL_CHINESE.getDisplayName());
+    public static void main(String[] args) {
+        System.out.println(getVariantsOf("he_IL"));
     }
 
     public static boolean setDesiredLanguage(final String loc) {
@@ -302,13 +293,27 @@ public class TranslationFactory {
         }
     }
 
-    public static List<String> getVariantsOf(String o) {
-        final Locale loc = TranslationFactory.stringToLocale(o);
+    public static List<String> getVariantsOf(String lng) {
         final LinkedHashSet<String> ret = new LinkedHashSet<String>();
+        final Locale loc = TranslationFactory.stringToLocale(lng);
         ret.add(localeToString(loc.getLanguage(), loc.getCountry(), loc.getVariant()));
         ret.add(localeToString(loc.getLanguage(), loc.getCountry(), null));
         ret.add(localeToString(loc.getLanguage(), null, loc.getVariant()));
         ret.add(localeToString(loc.getLanguage(), null, null));
+        // TODO: update TranslationHandler.createTranslationResource to use java.util.Locale.getLanguage.equals, see javadoc of
+        // Locale.getLanguage
+        // - ISO 639 is not a stable standard; some of the language codes it defines (specifically "iw",
+        // "ji", and "in") have changed. This constructor accepts both the old codes ("iw", "ji", and "in") and
+        // the new codes ("he", "yi", and "id"), but all other API on Locale will return only the OLD codes.
+        if (StringUtils.equalsIgnoreCase("he", lng) || StringUtils.equalsIgnoreCase("yi", lng) || StringUtils.equalsIgnoreCase("id", lng)) {
+            ret.add(lng);
+        } else if (StringUtils.equalsIgnoreCase("iw", lng)) {
+            ret.add("he");
+        } else if (StringUtils.equalsIgnoreCase("ji", lng)) {
+            ret.add("yi");
+        } else if (StringUtils.equalsIgnoreCase("in", lng)) {
+            ret.add("id");
+        }
         return new ArrayList<String>(ret);
     }
 }
