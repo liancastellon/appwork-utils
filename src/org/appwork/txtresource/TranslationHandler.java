@@ -228,7 +228,6 @@ public class TranslationHandler implements InvocationHandler {
      */
     private java.util.List<TranslateResource> fillLookup(final String... lookup) {
         final java.util.List<TranslateResource> ret = new ArrayList<TranslateResource>();
-        TranslateResource res;
         boolean containsDefault = false;
         if (lookup != null) {
             for (final String oo : lookup) {
@@ -238,8 +237,10 @@ public class TranslationHandler implements InvocationHandler {
                             if (TranslationHandler.DEFAULT.equals(o)) {
                                 containsDefault = true;
                             }
-                            res = this.createTranslationResource(o);
-                            ret.add(res);
+                            final TranslateResource res = this.createTranslationResource(o);
+                            if (ret != null) {
+                                ret.add(res);
+                            }
                         } catch (final NullPointerException e) {
                             org.appwork.loggingv3.LogV3.warning(e.getMessage());
                         } catch (final Throwable e) {
@@ -251,8 +252,10 @@ public class TranslationHandler implements InvocationHandler {
         }
         if (!containsDefault) {
             try {
-                res = this.createTranslationResource(TranslationHandler.DEFAULT);
-                ret.add(res);
+                final TranslateResource res = this.createTranslationResource(TranslationHandler.DEFAULT);
+                if (res != null) {
+                    ret.add(res);
+                }
             } catch (final Throwable e) {
                 org.appwork.loggingv3.LogV3.log(e);
             }
