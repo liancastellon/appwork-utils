@@ -57,6 +57,7 @@ import java.util.Locale;
 import javax.swing.KeyStroke;
 
 import org.appwork.exceptions.WTFException;
+import org.appwork.loggingv3.LogV3;
 import org.appwork.shutdown.ShutdownController;
 import org.appwork.shutdown.ShutdownEvent;
 import org.appwork.shutdown.ShutdownRequest;
@@ -672,41 +673,39 @@ public class CrossSystem {
 
     public static boolean caseSensitiveFileExists(File file) {
         if (file != null) {
-            if (CrossSystem.isWindows()) {
-                if (Application.getJavaVersion() >= Application.JAVA17) {
-                    try {
-                        /**
-                         * this is very fast
-                         */
-                        return CrossSystem17.caseSensitiveFileExists(file);
-                    } catch (Throwable e) {
-                        e.printStackTrace();
-                    }
+            if (Application.getJavaVersion() >= Application.JAVA17) {
+                try {
+                    /**
+                     * this is very fast
+                     */
+                    return CrossSystem17.caseSensitiveFileExists(file);
+                } catch (Throwable e) {
+                    LogV3.defaultLogger().log(e);
                 }
-                if (file.exists()) {
-                    /** this can be slow **/
-                    File current = file;
-                    String currentName = current.getName();
-                    loop: while ((current = current.getParentFile()) != null) {
-                        final String[] list = current.list();
-                        if (list != null) {
-                            for (String listItem : list) {
-                                if (currentName.equals(listItem)) {
-                                    currentName = current.getName();
-                                    continue loop;
-                                }
+            }
+            if (file.exists()) {
+                /** this can be slow **/
+                File current = file;
+                String currentName = current.getName();
+                loop: while ((current = current.getParentFile()) != null) {
+                    final String[] list = current.list();
+                    if (list != null) {
+                        for (String listItem : list) {
+                            if (currentName.equals(listItem)) {
+                                currentName = current.getName();
+                                continue loop;
                             }
                         }
-                        return false;
                     }
-                    return true;
+                    return false;
                 }
-                return false;
+                return true;
             } else {
-                return file.exists();
+                return false;
             }
+        } else {
+            return false;
         }
-        return false;
     }
 
     private static long parseMacOSVersion(final String osVersionProperty) {
