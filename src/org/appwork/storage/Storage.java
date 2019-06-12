@@ -33,6 +33,8 @@
  * ==================================================================================================================================================== */
 package org.appwork.storage;
 
+import org.appwork.utils.IO;
+
 public abstract class Storage {
 
     public Storage() {
@@ -78,6 +80,10 @@ public abstract class Storage {
     abstract public void put(String key, Long value) throws StorageException;
 
     abstract public void put(String key, String value) throws StorageException;
+
+    abstract public IO.SYNC getStorageSyncMode();
+
+    abstract public void setStorageSyncMode(IO.SYNC storageSyncMode);
 
     /**
      *

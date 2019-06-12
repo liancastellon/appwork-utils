@@ -99,6 +99,7 @@ public class EnumKeyHandler extends KeyHandler<Enum> {
 
     @Override
     protected void initHandler() throws Throwable {
+        setStorageSyncMode(getDefaultStorageSyncMode());
     }
 
     @Override

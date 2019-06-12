@@ -61,12 +61,25 @@ public class JsonKeyValueStorage extends Storage {
     private final File                file;
     private final boolean             plain;
     private final byte[]              key;
-    private boolean                   autoPutValues = true;
-    private volatile boolean          closed        = false;
-    private final AtomicLong          setMark       = new AtomicLong(0);
-    private final AtomicLong          writeMark     = new AtomicLong(0);
+    private boolean                   autoPutValues   = true;
+    private volatile boolean          closed          = false;
+    private final AtomicLong          setMark         = new AtomicLong(0);
+    private final AtomicLong          writeMark       = new AtomicLong(0);
     private boolean                   enumCacheEnabled;
-    private final ModifyLock          modifyLock    = new ModifyLock();
+    private final ModifyLock          modifyLock      = new ModifyLock();
+    private IO.SYNC                   storageSyncMode = IO.SYNC.NONE;
+
+    public IO.SYNC getStorageSyncMode() {
+        return storageSyncMode;
+    }
+
+    public void setStorageSyncMode(IO.SYNC storageSyncMode) {
+        if (storageSyncMode == null) {
+            this.storageSyncMode = IO.SYNC.NONE;
+        } else {
+            this.storageSyncMode = storageSyncMode;
+        }
+    }
 
     private final Map<String, Object> getMap() {
         return internalMap;
@@ -534,7 +547,7 @@ public class JsonKeyValueStorage extends Storage {
             final Runnable run = new Runnable() {
                 @Override
                 public void run() {
-                    JSonStorage.saveTo(file, plain, key, jsonBytes);
+                    JSonStorage.saveTo(file, plain, key, jsonBytes, getStorageSyncMode());
                 }
             };
             StorageHandler.enqueueWrite(run, file.getAbsolutePath(), true);

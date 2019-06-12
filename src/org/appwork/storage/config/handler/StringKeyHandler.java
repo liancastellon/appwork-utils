@@ -59,7 +59,7 @@ public class StringKeyHandler extends KeyHandler<String> {
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see org.appwork.storage.config.handler.KeyHandler#getValue()
      */
     @Override
@@ -80,8 +80,7 @@ public class StringKeyHandler extends KeyHandler<String> {
      */
     @Override
     protected void initHandler() throws Throwable {
-        // TODO Auto-generated method stub
-
+        setStorageSyncMode(getDefaultStorageSyncMode());
     }
 
     /*

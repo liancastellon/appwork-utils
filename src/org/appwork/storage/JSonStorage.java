@@ -69,7 +69,6 @@ import org.appwork.shutdown.ShutdownEvent;
 import org.appwork.shutdown.ShutdownRequest;
 import org.appwork.utils.Application;
 import org.appwork.utils.IO;
-import org.appwork.utils.IO.SYNC;
 import org.appwork.utils.IO.WriteToFileCallback;
 import org.appwork.utils.StringUtils;
 import org.appwork.utils.reflection.Clazz;
@@ -555,11 +554,7 @@ public class JSonStorage {
     }
 
     @Deprecated
-    /**
-     * @deprecated use IO.secureWrite instead
-     *
-     */
-    public static void saveTo(final File file, final boolean plain, final byte[] key, final byte[] data) throws StorageException {
+    public static void saveTo(final File file, final boolean plain, final byte[] key, final byte[] data, final IO.SYNC syncMode) throws StorageException {
         final Object lock = JSonStorage.requestLock(file);
         synchronized (lock) {
             try {
@@ -590,13 +585,21 @@ public class JSonStorage {
                     public void onClosed() {
                     }
                 };
-                IO.secureWrite(file, writeToFileCallback, SYNC.NONE);
+                IO.secureWrite(file, writeToFileCallback, syncMode);
             } catch (final Exception e) {
                 throw new StorageException("Can not write to " + file.getAbsolutePath(), e);
             } finally {
                 JSonStorage.unLock(file);
             }
         }
+    }
+
+    /**
+     * @deprecated use IO.secureWrite instead
+     *
+     */
+    public static void saveTo(final File file, final boolean plain, final byte[] key, final byte[] data) throws StorageException {
+        saveTo(file, plain, key, data, IO.SYNC.NONE);
     }
 
     public static String serializeToJson(final Object list) throws StorageException {

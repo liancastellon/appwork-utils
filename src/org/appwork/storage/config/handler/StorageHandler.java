@@ -71,6 +71,7 @@ import org.appwork.storage.config.annotations.DefaultDoubleArrayValue;
 import org.appwork.storage.config.annotations.DefaultFloatArrayValue;
 import org.appwork.storage.config.annotations.DefaultIntArrayValue;
 import org.appwork.storage.config.annotations.DefaultLongArrayValue;
+import org.appwork.storage.config.annotations.DefaultStorageSyncMode;
 import org.appwork.storage.config.events.ConfigEvent;
 import org.appwork.storage.config.events.ConfigEventSender;
 import org.appwork.utils.Application;
@@ -169,6 +170,10 @@ public class StorageHandler<T extends ConfigInterface> implements InvocationHand
                 urlClassPath = null;
             }
             ret = new JsonKeyValueStorage(new File(filePath.getAbsolutePath() + ".json"), urlClassPath, true, null);
+        }
+        final DefaultStorageSyncMode defaultStorageSyncMode = configInterface.getAnnotation(DefaultStorageSyncMode.class);
+        if (defaultStorageSyncMode != null) {
+            ret.setStorageSyncMode(defaultStorageSyncMode.value());
         }
         return ret;
     }
@@ -699,7 +704,7 @@ public class StorageHandler<T extends ConfigInterface> implements InvocationHand
         final Runnable run = new Runnable() {
             @Override
             public void run() {
-                JSonStorage.saveTo(path, cryptKey == null, cryptKey, jsonBytes);
+                JSonStorage.saveTo(path, cryptKey == null, cryptKey, jsonBytes, keyHandler.getStorageSyncMode());
             }
         };
         StorageHandler.enqueueWrite(run, path.getAbsolutePath(), isDelayedWriteAllowed(keyHandler));

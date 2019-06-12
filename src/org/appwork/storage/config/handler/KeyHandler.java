@@ -59,6 +59,7 @@ import org.appwork.storage.config.annotations.CustomValueGetter;
 import org.appwork.storage.config.annotations.DefaultFactory;
 import org.appwork.storage.config.annotations.DefaultJsonObject;
 import org.appwork.storage.config.annotations.DefaultOnNull;
+import org.appwork.storage.config.annotations.DefaultStorageSyncMode;
 import org.appwork.storage.config.annotations.DescriptionForConfigEntry;
 import org.appwork.storage.config.annotations.DevConfig;
 import org.appwork.storage.config.annotations.HexColorString;
@@ -70,6 +71,8 @@ import org.appwork.storage.config.annotations.ValidatorFactory;
 import org.appwork.storage.config.events.ConfigEvent;
 import org.appwork.storage.config.events.ConfigEvent.Types;
 import org.appwork.storage.config.events.ConfigEventSender;
+import org.appwork.utils.IO;
+import org.appwork.utils.IO.SYNC;
 import org.appwork.utils.reflection.Clazz;
 
 /**
@@ -90,6 +93,20 @@ public abstract class KeyHandler<RawClass> {
     protected AbstractCustomValueGetter<RawClass> customValueGetter;
     protected String[]                            backwardsCompatibilityLookupKeys;
     private boolean                               defaultOnNull           = false;
+    private IO.SYNC                               storageSyncMode         = IO.SYNC.NONE;
+
+    public IO.SYNC getStorageSyncMode() {
+        return storageSyncMode;
+    }
+
+    public void setStorageSyncMode(IO.SYNC storageSyncMode) {
+        if (storageSyncMode == null) {
+            this.storageSyncMode = SYNC.NONE;
+        } else {
+            this.storageSyncMode = storageSyncMode;
+        }
+        updateStorageSyncMode();
+    }
 
     /**
      * @param storageHandler
@@ -98,6 +115,22 @@ public abstract class KeyHandler<RawClass> {
     protected KeyHandler(final StorageHandler<?> storageHandler, final String key) {
         this.storageHandler = storageHandler;
         this.key = key;
+    }
+
+    protected void updateStorageSyncMode() {
+        final StorageHandler<?> storageHandler = getStorageHandler();
+        if (storageHandler != null && storageHandler.getPrimitiveStorage() != null) {
+            final SYNC wish = getStorageSyncMode();
+            if (wish != null) {
+                SYNC is = storageHandler.getPrimitiveStorage().getStorageSyncMode();
+                if (is == null) {
+                    is = SYNC.NONE;
+                }
+                if (wish.ordinal() > is.ordinal()) {
+                    storageHandler.getPrimitiveStorage().setStorageSyncMode(wish);
+                }
+            }
+        }
     }
 
     protected boolean isDefaultOnNull() {
@@ -138,7 +171,7 @@ public abstract class KeyHandler<RawClass> {
      * @param class1
      */
     private void checkBadAnnotations(final Method m, final Class<? extends Annotation>... classes) {
-        final Class<?>[] okForAll = new Class<?>[] { DefaultOnNull.class, HexColorString.class, CustomValueGetter.class, ValidatorFactory.class, DefaultJsonObject.class, DefaultFactory.class, AboutConfig.class, NoHeadless.class, DevConfig.class, RequiresRestart.class, AllowStorage.class, DescriptionForConfigEntry.class, ConfigEntryKeywords.class, CryptedStorage.class, PlainStorage.class };
+        final Class<?>[] okForAll = new Class<?>[] { DefaultOnNull.class, HexColorString.class, DefaultStorageSyncMode.class, CustomValueGetter.class, ValidatorFactory.class, DefaultJsonObject.class, DefaultFactory.class, AboutConfig.class, NoHeadless.class, DevConfig.class, RequiresRestart.class, AllowStorage.class, DescriptionForConfigEntry.class, ConfigEntryKeywords.class, CryptedStorage.class, PlainStorage.class };
         final Class<?>[] clazzes = new Class<?>[classes.length + okForAll.length];
         System.arraycopy(classes, 0, clazzes, 0, classes.length);
         System.arraycopy(okForAll, 0, clazzes, classes.length, okForAll.length);
@@ -237,6 +270,18 @@ public abstract class KeyHandler<RawClass> {
         } catch (final Throwable e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public SYNC getDefaultStorageSyncMode() {
+        try {
+            final DefaultStorageSyncMode df = this.getAnnotation(DefaultStorageSyncMode.class);
+            if (df != null) {
+                return df.value();
+            }
+        } catch (final Throwable e) {
+            throw new RuntimeException(e);
+        }
+        return SYNC.NONE;
     }
 
     @SuppressWarnings("unchecked")
