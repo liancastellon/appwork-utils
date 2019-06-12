@@ -137,6 +137,7 @@ public abstract class ListHandler<T> extends KeyHandler<T> {
 
     @Override
     protected void initHandler() throws Throwable {
+        setStorageSyncMode(getDefaultStorageSyncMode());
         final CryptedStorage cryptedStorage = this.getAnnotation(CryptedStorage.class);
         if (cryptedStorage != null) {
             /* use key from CryptedStorage */
@@ -311,7 +312,7 @@ public abstract class ListHandler<T> extends KeyHandler<T> {
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see org.appwork.storage.config.KeyHandler#validateValue(java.lang.Object)
      */
     @Override

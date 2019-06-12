@@ -86,6 +86,7 @@ public class LongKeyHandler extends KeyHandler<Long> {
             this.min = this.validator.min();
             this.max = this.validator.max();
         }
+        setStorageSyncMode(getDefaultStorageSyncMode());
     }
 
     /*

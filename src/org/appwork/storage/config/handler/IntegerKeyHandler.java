@@ -85,6 +85,7 @@ public class IntegerKeyHandler extends KeyHandler<Integer> {
             this.min = (int) this.validator.min();
             this.max = (int) this.validator.max();
         }
+        setStorageSyncMode(getDefaultStorageSyncMode());
     }
 
     /*
