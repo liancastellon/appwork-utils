@@ -41,6 +41,7 @@ import java.net.URL;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 
+import org.appwork.utils.JVMVersion;
 import org.appwork.utils.Regex;
 import org.appwork.utils.StringUtils;
 import org.appwork.utils.encoding.Base64;
@@ -104,7 +105,21 @@ public class HTTPProxyHTTPConnectionImpl extends HTTPConnectionImpl {
                     this.connectionSocket = createConnectionSocket(null);
                     try {
                         /* create and connect to socks5 proxy */
-                        this.connectionSocket.getSocket().connect(this.proxyInetSocketAddress = new InetSocketAddress(host, this.proxy.getPort()), this.connectTimeout);
+                        final InetSocketAddress connectedInetSocketAddress;
+                        if (JVMVersion.isMinimum(JVMVersion.JAVA19)) {
+                            /**
+                             * JAVA >=1.9 (tested on Java12) uses hostName from InetSocketAddress for SNI extension
+                             *
+                             * have not found yet a way to disable SNI extension per connection
+                             *
+                             */
+                            connectedInetSocketAddress = HTTPConnectionUtils.removeHostName(new InetSocketAddress(host, this.proxy.getPort()));
+                        } else {
+                            connectedInetSocketAddress = new InetSocketAddress(host, this.proxy.getPort());
+                        }
+                        proxyInetSocketAddress = connectedInetSocketAddress;
+
+                        this.connectionSocket.getSocket().connect(proxyInetSocketAddress, this.connectTimeout);
                         /* connection is okay */
                         ee = null;
                         break;

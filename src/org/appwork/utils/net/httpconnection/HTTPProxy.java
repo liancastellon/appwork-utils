@@ -94,31 +94,31 @@ public class HTTPProxy {
     }
 
     public static final HTTPProxy NONE = new HTTPProxy(TYPE.NONE) {
-        @Override
-        public void setConnectMethodPrefered(final boolean value) {
-        }
+                                           @Override
+                                           public void setConnectMethodPrefered(final boolean value) {
+                                           }
 
-        @Override
-        public void setLocal(final String local) {
-        }
+                                           @Override
+                                           public void setLocal(final String local) {
+                                           }
 
-        @Override
-        public void setPass(final String pass) {
-        }
+                                           @Override
+                                           public void setPass(final String pass) {
+                                           }
 
-        @Override
-        public void setPort(final int port) {
-        }
+                                           @Override
+                                           public void setPort(final int port) {
+                                           }
 
-        @Override
-        public void setType(final TYPE type) {
-            super.setType(TYPE.NONE);
-        }
+                                           @Override
+                                           public void setType(final TYPE type) {
+                                               super.setType(TYPE.NONE);
+                                           }
 
-        @Override
-        public void setUser(final String user) {
-        }
-    };
+                                           @Override
+                                           public void setUser(final String user) {
+                                           }
+                                       };
 
     public static List<HTTPProxy> getFromSystemProperties() {
         final java.util.List<HTTPProxy> ret = new ArrayList<HTTPProxy>();
@@ -362,11 +362,13 @@ public class HTTPProxy {
         if (StringUtils.isEmpty(s)) {
             return null;
         }
-        final String type = new Regex(s, "(https?|socks(5|4)|direct)://").getMatch(0);
+        final String type = new Regex(s, "(https?|socks(5|4)|direct|none)://").getMatch(0);
         final String auth = new Regex(s, "://(.+)@").getMatch(0);
         final String host = new Regex(s, "://(.+@)?(.*?)(/|$)").getMatch(1);
         HTTPProxy ret = null;
-        if (StringUtils.equalsIgnoreCase("https", type)) {
+        if (StringUtils.equalsIgnoreCase("none", type)) {
+            return HTTPProxy.NONE;
+        } else if (StringUtils.equalsIgnoreCase("https", type)) {
             ret = new HTTPProxy(TYPE.HTTPS);
             ret.setPort(443);
         } else if (StringUtils.equalsIgnoreCase("http", type)) {

@@ -171,6 +171,7 @@ public class JavaSSLSocketStreamFactory implements SSLSocketStreamFactory {
             public Socket createSocket(InetAddress arg0, int arg1, InetAddress arg2, int arg3) throws IOException {
                 return disableCipherSuit(this.removeSSLProtocol(factory.createSocket(arg0, arg1, arg2, arg3)));
             }
+
         };
     }
 
@@ -222,8 +223,6 @@ public class JavaSSLSocketStreamFactory implements SSLSocketStreamFactory {
     @Override
     public SSLSocketStreamInterface create(final SocketStreamInterface socketStream, final String host, final int port, final boolean autoClose, final boolean trustAll, final String[] cipherBlacklist) throws IOException {
         final SSLSocket sslSocket = (SSLSocket) getSSLSocketFactory(trustAll, cipherBlacklist).createSocket(socketStream.getSocket(), host, port, autoClose);
-        // sslSocket.startHandshake();
-        // verifySSLHostname(sslSocket, host, trustAll);
         return new SSLSocketStreamInterface() {
             @Override
             public Socket getSocket() {
