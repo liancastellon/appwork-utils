@@ -38,6 +38,7 @@ import java.io.InputStream;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
@@ -59,6 +60,14 @@ public class HTTPConnectionUtils {
         IPV4_IPV6,
         IPV6_IPV4,
         SYSTEM;
+    }
+
+    public static InetSocketAddress removeHostName(InetSocketAddress addr) {
+        if (addr == null || addr.getAddress() == null) {
+            return addr;
+        } else {
+            return new InetSocketAddress(addr.getAddress(), addr.getPort());
+        }
     }
 
     public static InetAddress[] resolvHostIP(final String host, IPVERSION ipVersion) throws IOException {
