@@ -53,5 +53,6 @@ public class JVMTest {
         System.out.println(JVMVersion.parseJavaVersionString("10.0.1+13  - LTS") == 10000001000013l);
         System.out.println(JVMVersion.parseJavaVersionString("10-ea+42") == 10000000000042l);
         System.out.println(JVMVersion.parseJavaVersionString("12+33") == 12000000000033l);
+        System.out.println(JVMVersion.parseJavaVersionString("13-ea+25") == 13000000000025l);
     }
 }
