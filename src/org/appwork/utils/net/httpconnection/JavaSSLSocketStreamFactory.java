@@ -55,6 +55,7 @@ import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 
 import org.appwork.utils.Application;
+import org.appwork.utils.JVMVersion;
 import org.appwork.utils.Regex;
 import org.appwork.utils.StringUtils;
 
@@ -92,9 +93,11 @@ public class JavaSSLSocketStreamFactory implements SSLSocketStreamFactory {
                 if (socket != null && socket instanceof SSLSocket) {
                     final SSLSocket sslSocket = (SSLSocket) socket;
                     final long javaVersion = Application.getJavaVersion();
-                    if (javaVersion >= Application.JAVA18) {
+                    if (javaVersion >= JVMVersion.JAVA_11) {
+                        sslSocket.setEnabledProtocols(new String[] { "TLSv1", "TLSv1.1", "TLSv1.2", "TLSv1.3" });
+                    } else if (javaVersion >= JVMVersion.JAVA18) {
                         sslSocket.setEnabledProtocols(new String[] { "TLSv1", "TLSv1.1", "TLSv1.2" });
-                    } else if (javaVersion >= Application.JAVA17) {
+                    } else if (javaVersion >= JVMVersion.JAVA17) {
                         sslSocket.setEnabledProtocols(new String[] { "TLSv1", "TLSv1.1", "TLSv1.2" });
                     } else {
                         sslSocket.setEnabledProtocols(new String[] { "TLSv1" });
