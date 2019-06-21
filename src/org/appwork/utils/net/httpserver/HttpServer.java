@@ -257,7 +257,7 @@ public class HttpServer implements Runnable, HTTPBridge {
 
     /*
      * (non-Javadoc)
-     *
+     * 
      * @see java.lang.Runnable#run()
      */
     /**
@@ -311,7 +311,7 @@ public class HttpServer implements Runnable, HTTPBridge {
             if (oldControlSocket != null) {
                 oldControlSocket.close();
             }
-        } catch (final Throwable e) {
+        } catch (final Throwable ignore) {
         }
         lastPort = controlSocket.getLocalPort();
         final Thread serverThread = new Thread(this);
@@ -326,7 +326,7 @@ public class HttpServer implements Runnable, HTTPBridge {
             if (lControlSocket != null) {
                 lControlSocket.close();
             }
-        } catch (final Throwable e) {
+        } catch (final Throwable ignore) {
         }
         lastPort = -1;
     }
@@ -343,7 +343,7 @@ public class HttpServer implements Runnable, HTTPBridge {
 
     /*
      * (non-Javadoc)
-     *
+     * 
      * @see
      * org.appwork.utils.net.httpserver.requests.HTTPBridge#canHandleChunkedEncoding(org.appwork.utils.net.httpserver.requests.HttpRequest,
      * org.appwork.utils.net.httpserver.responses.HttpResponse)
