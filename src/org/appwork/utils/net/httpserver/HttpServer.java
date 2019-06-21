@@ -293,7 +293,15 @@ public class HttpServer implements Runnable, HTTPBridge {
             final SocketAddress socketAddress = new InetSocketAddress(this.getLocalHost(), port);
             controlSocket = new ServerSocket();
             controlSocket.setReuseAddress(true);
-            controlSocket.bind(socketAddress);
+            try {
+                controlSocket.bind(socketAddress);
+            } catch (IOException e) {
+                try {
+                    controlSocket.close();
+                } catch (IOException ignore) {
+                }
+                throw new IOException("cannot bind to:" + socketAddress, e);
+            }
         } else {
             controlSocket = new ServerSocket(port);
             controlSocket.setReuseAddress(true);
