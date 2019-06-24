@@ -68,7 +68,6 @@ import org.appwork.loggingv3.LogV3;
 import org.appwork.net.protocol.http.HTTPConstants;
 import org.appwork.scheduler.DelayedRunnable;
 import org.appwork.utils.Application;
-import org.appwork.utils.JVMVersion;
 import org.appwork.utils.KeyValueStringEntry;
 import org.appwork.utils.Regex;
 import org.appwork.utils.StringUtils;
@@ -796,18 +795,7 @@ public class HTTPConnectionImpl implements HTTPConnection {
                             throw new ProxyConnectException("Invalid Direct Proxy", lProxy);
                         }
                     }
-                    final InetSocketAddress connectedInetSocketAddress;
-                    if (JVMVersion.isMinimum(JVMVersion.JAVA19)) {
-                        /**
-                         * JAVA >=1.9 (tested on Java12) uses hostName from InetSocketAddress for SNI extension
-                         *
-                         * have not found yet a way to disable SNI extension per connection
-                         *
-                         */
-                        connectedInetSocketAddress = HTTPConnectionUtils.removeHostName(new InetSocketAddress(host, port));
-                    } else {
-                        connectedInetSocketAddress = new InetSocketAddress(host, port);
-                    }
+                    final InetSocketAddress connectedInetSocketAddress = new InetSocketAddress(host, port);
                     try {
                         /* try to connect to given host now */
                         int connectTimeout = this.getConnectTimeout();
