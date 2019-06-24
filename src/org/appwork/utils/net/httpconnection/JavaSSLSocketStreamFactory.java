@@ -49,7 +49,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 
+import javax.net.ssl.SNIServerName;
 import javax.net.ssl.SSLHandshakeException;
+import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
@@ -226,6 +228,11 @@ public class JavaSSLSocketStreamFactory implements SSLSocketStreamFactory {
     @Override
     public SSLSocketStreamInterface create(final SocketStreamInterface socketStream, final String host, final int port, final boolean autoClose, final boolean trustAll, final String[] cipherBlacklist) throws IOException {
         final SSLSocket sslSocket = (SSLSocket) getSSLSocketFactory(trustAll, cipherBlacklist).createSocket(socketStream.getSocket(), host, port, autoClose);
+        if (StringUtils.isEmpty(host)) {
+            final SSLParameters sslParams = sslSocket.getSSLParameters();
+            sslParams.setServerNames(new ArrayList<SNIServerName>(0));
+            sslSocket.setSSLParameters(sslParams);
+        }
         return new SSLSocketStreamInterface() {
             @Override
             public Socket getSocket() {
