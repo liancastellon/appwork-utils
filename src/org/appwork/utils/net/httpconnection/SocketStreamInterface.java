@@ -33,6 +33,7 @@
  * ==================================================================================================================================================== */
 package org.appwork.utils.net.httpconnection;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -42,7 +43,7 @@ import java.net.Socket;
  * @author daniel
  *
  */
-public interface SocketStreamInterface {
+public interface SocketStreamInterface extends Closeable {
     public Socket getSocket();
 
     public InputStream getInputStream() throws IOException;
