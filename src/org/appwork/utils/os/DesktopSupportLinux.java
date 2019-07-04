@@ -89,41 +89,41 @@ public class DesktopSupportLinux implements DesktopSupport {
         final String[] openCommand;
         /* WAYLAND? */
         if (contains(XDG_CURRENT_DESKTOP, "wayland")) {
-            System.out.println("Wayland detected:XDG_CURRENT_DESKTOP=" + XDG_CURRENT_DESKTOP);
+            org.appwork.loggingv3.LogV3.info("Wayland detected:XDG_CURRENT_DESKTOP=" + XDG_CURRENT_DESKTOP);
             this.waylandDetected = true;
         } else if (contains(GDMSESSION, "wayland")) {
-            System.out.println("Wayland detected:GDMSESSION=" + GDMSESSION);
+            org.appwork.loggingv3.LogV3.info("Wayland detected:GDMSESSION=" + GDMSESSION);
             this.waylandDetected = true;
         } else if (contains(XDG_SESSION_TYPE, "wayland")) {
-            System.out.println("Wayland detected:XDG_SESSION_TYPE=" + XDG_SESSION_TYPE);
+            org.appwork.loggingv3.LogV3.info("Wayland detected:XDG_SESSION_TYPE=" + XDG_SESSION_TYPE);
             this.waylandDetected = true;
         } else if (contains(WAYLAND_DISPLAY, "wayland")) {
-            System.out.println("Wayland detected:WAYLAND_DISPLAY=" + WAYLAND_DISPLAY);
+            org.appwork.loggingv3.LogV3.info("Wayland detected:WAYLAND_DISPLAY=" + WAYLAND_DISPLAY);
             this.waylandDetected = true;
         } else {
             this.waylandDetected = false;
         }
         if (contains(XDG_CURRENT_DESKTOP, "Unity") || contains(GDMSESSION, "ubuntu")) {
             if (contains(GDMSESSION, "ubuntu-2d")) {
-                System.out.println("Unity-2D Desktop detected");
+                org.appwork.loggingv3.LogV3.info("Unity-2D Desktop detected");
             } else {
-                System.out.println("Unity-3D Desktop detected");
+                org.appwork.loggingv3.LogV3.info("Unity-3D Desktop detected");
             }
             this.windowManager = WINDOW_MANAGER.UNITY;
             openCommand = new String[] { "gnome-open", "%s" };
         } else if (contains(XDG_CURRENT_DESKTOP, "GNOME") || (StringUtils.isNotEmpty(GNOME_DESKTOP_SESSION_ID) && !"this-is-deprecated".equals(GNOME_DESKTOP_SESSION_ID)) || contains(GDMSESSION, "GNOME") || contains(GDMSESSION, "gnome-shell") || contains(GDMSESSION, "gnome-classic") || contains(GDMSESSION, "gnome-fallback") || contains(GDMSESSION, "cinnamon")) {
-            System.out.println("Gnome Desktop detected");
+            org.appwork.loggingv3.LogV3.info("Gnome Desktop detected");
             this.windowManager = WINDOW_MANAGER.GNOME;
             openCommand = new String[] { "gnome-open", "%s" };
         } else if (contains(XDG_CURRENT_DESKTOP, "mate") || contains(DESKTOP_SESSION, "mate")) {
-            System.out.println("Mate Desktop detected");
+            org.appwork.loggingv3.LogV3.info("Mate Desktop detected");
             this.windowManager = WINDOW_MANAGER.MATE;
             openCommand = new String[] { "gnome-open", "%s" };
         } else if (contains(KDE_FULL_SESSION, "true") || contains(DESKTOP_SESSION, "kde-plasma")) {
             if (KDE_SESSION_VERSION != null) {
-                System.out.println("KDE Version " + KDE_SESSION_VERSION + " detected");
+                org.appwork.loggingv3.LogV3.info("KDE Version " + KDE_SESSION_VERSION + " detected");
             } else {
-                System.out.println("KDE detected");
+                org.appwork.loggingv3.LogV3.info("KDE detected");
             }
             this.windowManager = WINDOW_MANAGER.KDE;
             String kdeOpenCommand = "kde-open";
@@ -137,16 +137,16 @@ public class DesktopSupportLinux implements DesktopSupport {
             }
             openCommand = new String[] { kdeOpenCommand, "%s" };
         } else if (contains(XDG_CURRENT_DESKTOP, "XFCE")) {
-            System.out.println("XFCE detected");
+            org.appwork.loggingv3.LogV3.info("XFCE detected");
             this.windowManager = WINDOW_MANAGER.XFCE;
             openCommand = new String[] { "xdg-open", "%s" };
         } else {
-            System.out.println("sun.Desktop: " + sunDesktop);
-            System.out.println("XDG_CURRENT_DESKTOP: " + XDG_CURRENT_DESKTOP);
-            System.out.println("KDE_FULL_SESSION: " + KDE_FULL_SESSION);
-            System.out.println("KDE_SESSION_VERSION: " + KDE_SESSION_VERSION);
-            System.out.println("DESKTOP_SESSION: " + DESKTOP_SESSION);
-            System.out.println("GNOME_DESKTOP_SESSION_ID: " + GNOME_DESKTOP_SESSION_ID);
+            org.appwork.loggingv3.LogV3.info("sun.Desktop: " + sunDesktop);
+            org.appwork.loggingv3.LogV3.info("XDG_CURRENT_DESKTOP: " + XDG_CURRENT_DESKTOP);
+            org.appwork.loggingv3.LogV3.info("KDE_FULL_SESSION: " + KDE_FULL_SESSION);
+            org.appwork.loggingv3.LogV3.info("KDE_SESSION_VERSION: " + KDE_SESSION_VERSION);
+            org.appwork.loggingv3.LogV3.info("DESKTOP_SESSION: " + DESKTOP_SESSION);
+            org.appwork.loggingv3.LogV3.info("GNOME_DESKTOP_SESSION_ID: " + GNOME_DESKTOP_SESSION_ID);
             this.windowManager = WINDOW_MANAGER.UNKNOWN;
             openCommand = null;
         }
@@ -307,7 +307,7 @@ public class DesktopSupportLinux implements DesktopSupport {
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see org.appwork.utils.os.DesktopSupport#getDefaultDownloadDirectory()
      */
     @Override
@@ -336,7 +336,7 @@ public class DesktopSupportLinux implements DesktopSupport {
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see org.appwork.utils.os.DesktopSupport#getProcessExecutablePathByPID(int)
      */
     @Override
@@ -346,7 +346,7 @@ public class DesktopSupportLinux implements DesktopSupport {
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see org.appwork.utils.os.DesktopSupport#getProcessCommandlineByPID(int)
      */
     @Override
@@ -356,7 +356,7 @@ public class DesktopSupportLinux implements DesktopSupport {
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see org.appwork.utils.os.DesktopSupport#killProcessesByExecutablePath(java.lang.String, int)
      */
     @Override
