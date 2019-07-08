@@ -509,6 +509,9 @@ public class JSonMapper {
                             Class cls = s.getMethod().getDeclaringClass();
                             while (fieldType instanceof TypeVariable) {
                                 ParameterizedType parameterized = cc.getParameterizedType(cls);
+                                if (parameterized == null && type instanceof ParameterizedType) {
+                                    parameterized = (ParameterizedType) type;
+                                }
                                 Type[] actual = parameterized.getActualTypeArguments();
                                 TypeVariable[] types = cls.getTypeParameters();
                                 for (int i = 0; i < types.length; i++) {
