@@ -299,6 +299,10 @@ public class HTTPConnectionUtils {
 
     public static long[] parseRequestRange(HTTPConnection connection) {
         final String requestRange = connection != null ? connection.getRequestProperty(HTTPConstants.HEADER_REQUEST_RANGE) : null;
+        return parseRequestRange(requestRange);
+    }
+
+    public static long[] parseRequestRange(final String requestRange) {
         final String from = new Regex(requestRange, "bytes\\s*=\\s*(\\d*)-").getMatch(0);
         final String to = new Regex(requestRange, "bytes\\s*=\\s*.*?-\\s*(\\d*)").getMatch(0);
         final long[] ret = new long[] { -1l, -1l };
