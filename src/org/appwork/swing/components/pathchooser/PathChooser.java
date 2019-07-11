@@ -191,7 +191,7 @@ public class PathChooser extends MigPanel {
                 }
 
                 @Override
-                protected void sortFound(final List<String> found) {
+                protected void sortFound(String search, final List<String> found) {
                     Collections.sort(found, new Comparator<String>() {
                         @Override
                         public int compare(final String o1, final String o2) {
