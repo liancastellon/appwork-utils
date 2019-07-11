@@ -152,7 +152,7 @@ public abstract class SearchComboBox<T> extends JComboBox {
 
         /*
          * (non-Javadoc)
-         * 
+         *
          * @see javax.swing.ComboBoxEditor#addActionListener(java.awt.event. ActionListener)
          */
         @Override
@@ -205,10 +205,11 @@ public abstract class SearchComboBox<T> extends JComboBox {
             final java.util.List<T> all = new ArrayList<T>();
             final ComboBoxModel model = SearchComboBox.this.getModel();
             this.searchComboBox.searchAutoComplete(model, txt, found, all);
-            SearchComboBox.this.sortFound(found);
+            SearchComboBox.this.sortFound(txt, found);
             new EDTRunner() {
                 @Override
                 protected void runInEDT() {
+                    setListSearchResults(found, all);
                     final int pos = Editor.this.tf.getCaretPosition();
                     if (found.size() == 0) {
                         SearchComboBox.this.hidePopup();
@@ -272,7 +273,7 @@ public abstract class SearchComboBox<T> extends JComboBox {
 
         /*
          * (non-Javadoc)
-         * 
+         *
          * @see javax.swing.event.DocumentListener#changedUpdate(javax.swing.event .DocumentEvent)
          */
         @Override
@@ -303,7 +304,7 @@ public abstract class SearchComboBox<T> extends JComboBox {
 
         /*
          * (non-Javadoc)
-         * 
+         *
          * @see javax.swing.ComboBoxEditor#getEditorComponent()
          */
         @Override
@@ -314,7 +315,7 @@ public abstract class SearchComboBox<T> extends JComboBox {
 
         /*
          * (non-Javadoc)
-         * 
+         *
          * @see javax.swing.ComboBoxEditor#getItem()
          */
         @Override
@@ -329,7 +330,7 @@ public abstract class SearchComboBox<T> extends JComboBox {
 
         /*
          * (non-Javadoc)
-         * 
+         *
          * @see javax.swing.event.DocumentListener#insertUpdate(javax.swing.event .DocumentEvent)
          */
         @Override
@@ -340,7 +341,7 @@ public abstract class SearchComboBox<T> extends JComboBox {
 
         /*
          * (non-Javadoc)
-         * 
+         *
          * @see javax.swing.ComboBoxEditor#removeActionListener(java.awt.event. ActionListener)
          */
         @Override
@@ -350,7 +351,7 @@ public abstract class SearchComboBox<T> extends JComboBox {
 
         /*
          * (non-Javadoc)
-         * 
+         *
          * @see javax.swing.event.DocumentListener#removeUpdate(javax.swing.event .DocumentEvent)
          */
         @Override
@@ -375,7 +376,7 @@ public abstract class SearchComboBox<T> extends JComboBox {
 
         /*
          * (non-Javadoc)
-         * 
+         *
          * @see javax.swing.ComboBoxEditor#selectAll()
          */
         @Override
@@ -385,7 +386,7 @@ public abstract class SearchComboBox<T> extends JComboBox {
 
         /*
          * (non-Javadoc)
-         * 
+         *
          * @see javax.swing.ComboBoxEditor#setItem(java.lang.Object)
          */
         @SuppressWarnings("unchecked")
@@ -882,10 +883,15 @@ public abstract class SearchComboBox<T> extends JComboBox {
     }
 
     /**
+     * @param search
+     *            TODO
      * @param found
      */
-    protected void sortFound(final List<T> found) {
+    protected void sortFound(String search, final List<T> found) {
         // TODO Auto-generated method stub
+    }
+
+    protected void setListSearchResults(final List<T> found, final List<T> all) {
     }
 
     /**
