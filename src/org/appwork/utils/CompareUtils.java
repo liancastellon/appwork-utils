@@ -147,7 +147,7 @@ public class CompareUtils {
             }
             return true;
         } else if (objectX.getClass() == objectY.getClass()) {
-            if (Clazz.isPrimitive(objectX.getClass())) {
+            if (Clazz.isPrimitive(objectX.getClass()) || Clazz.isEnum(objectX.getClass()) || Clazz.isString(objectX.getClass())) {
                 // if true, this would have exited in the } else if (objectX.equals(objectY)) { block above
                 return false;
             }
@@ -163,7 +163,7 @@ public class CompareUtils {
             } catch (SecurityException e) {
                 throw new WTFException(e);
             } catch (NoSuchMethodException e) {
-                throw new WTFException(e);
+                return false;
             } catch (IllegalArgumentException e) {
                 throw new WTFException(e);
             } catch (IllegalAccessException e) {
