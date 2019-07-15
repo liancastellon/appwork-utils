@@ -174,7 +174,7 @@ public abstract class ExtTableModel<E> extends AbstractTableModel {
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see javax.swing.table.AbstractTableModel#fireTableChanged(javax.swing.event.TableModelEvent)
      */
     @Override
@@ -539,7 +539,7 @@ public abstract class ExtTableModel<E> extends AbstractTableModel {
     public TableCellEditor getCelleditorByColumn(final int modelColumnIndex) {
         /*
          * Math.max(0, columnIndex)
-         * 
+         *
          * WORKAROUND for -1 column access,Index out of Bound,Unknown why it happens but this workaround seems to do its job
          */
         return this.getExtColumnByModelIndex(modelColumnIndex);
@@ -554,7 +554,7 @@ public abstract class ExtTableModel<E> extends AbstractTableModel {
     public ExtColumn<E> getCellrendererByColumn(final int columnIndex) {
         /*
          * Math.max(0, columnIndex)
-         * 
+         *
          * WORKAROUND for -1 column access,Index out of Bound,Unknown why it happens but this workaround seems to do its job
          */
         return this.columns.get(Math.max(0, columnIndex));
@@ -594,7 +594,7 @@ public abstract class ExtTableModel<E> extends AbstractTableModel {
     public String getColumnName(final int column) {
         /*
          * Math.max(0, columnIndex)
-         * 
+         *
          * WORKAROUND for -1 column access,Index out of Bound,Unknown why it happens but this workaround seems to do its job
          */
         return this.columns.get(Math.max(0, column)).getName();
@@ -692,6 +692,12 @@ public abstract class ExtTableModel<E> extends AbstractTableModel {
 
     /**
      * @param sortOrderIdentifier
+     */
+    /**
+     * TODO: review sort identifier stuff and rewrite to use ENUMs
+     * 
+     * @param sortOrderIdentifier
+     * @return
      */
     public String getNextSortIdentifier(final String sortOrderIdentifier) {
         if (sortOrderIdentifier == null || sortOrderIdentifier.equals(ExtColumn.SORT_DESC)) {
@@ -1023,9 +1029,9 @@ public abstract class ExtTableModel<E> extends AbstractTableModel {
 
     /*
      * this will be called after fireTableStructureChanged. you can customize everything after this
-     * 
+     *
      * true = restore selection
-     * 
+     *
      * false = do not restore selection
      */
     protected boolean postSetTableData(final List<E> newtableData) {

@@ -37,11 +37,14 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.file.FileStore;
+import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.appwork.loggingv3.LogV3;
@@ -50,6 +53,41 @@ import org.appwork.utils.os.CrossSystem;
 public class Files17 {
     public static File guessRoot(File file) throws IOException {
         return guessRoot(file, false);
+    }
+
+    private final static HashMap<String, List<FileStore>> FILESTORECACHE = new HashMap<String, List<FileStore>>();
+
+    public static Iterable<FileStore> getFileStores() {
+        final FileSystem fileSystem = FileSystems.getDefault();
+        if (fileSystem.getClass().getName().endsWith("LinuxFileSystem")) {
+            // LinuxFileSystem.getFileStores returns iterator which parses mtab file in real time and can block/take long time
+            final File mtab = new File("/etc/mtab");
+            if (mtab.isFile()) {
+                final String cacheID = Hash.getSHA256(mtab);
+                synchronized (FILESTORECACHE) {
+                    final List<FileStore> cache = FILESTORECACHE.get(cacheID);
+                    if (cache != null) {
+                        LogV3.logger(Files17.class).info("getFileStores|cached|size:" + cache.size());
+                        return cache;
+                    } else {
+                        final List<FileStore> fileStores = new ArrayList<FileStore>();
+                        final long startTimeStamp = System.currentTimeMillis();
+                        try {
+                            for (final FileStore fileStore : fileSystem.getFileStores()) {
+                                fileStores.add(fileStore);
+                            }
+                        } finally {
+                            LogV3.logger(Files17.class).info("getFileStores|duration:" + (System.currentTimeMillis() - startTimeStamp) + "|size:" + fileStores.size());
+                        }
+                        FILESTORECACHE.clear();
+                        FILESTORECACHE.put(cacheID, fileStores);
+                        return fileStores;
+                    }
+                }
+            }
+        }
+        return fileSystem.getFileStores();
+
     }
 
     public static File guessRoot(File file, boolean throwException) throws IOException {
@@ -100,7 +138,7 @@ public class Files17 {
                     final long startTimeStamp2 = System.currentTimeMillis();
                     final Iterable<FileStore> fileStores;
                     try {
-                        fileStores = FileSystems.getDefault().getFileStores();
+                        fileStores = getFileStores();
                     } finally {
                         LogV3.logger(Files17.class).info("guessRoot:" + file + "|getFileStores|duration:" + (System.currentTimeMillis() - startTimeStamp2));
                     }
