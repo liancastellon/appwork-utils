@@ -44,6 +44,7 @@ import java.util.TreeSet;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 
+import org.appwork.utils.Application;
 import org.appwork.utils.ImageProvider.ImageProvider;
 
 public class ExtMergedIcon implements Icon, IDIcon {
@@ -144,7 +145,9 @@ public class ExtMergedIcon implements Icon, IDIcon {
 
     protected void idIconCheck(final Entry entry) {
         if (!(entry.icon instanceof IDIcon)) {
-            new Exception(this.getClass() + ": Warning. Not an  IDIcon").printStackTrace();
+            if (!Application.isJared(null)) {
+                new Exception(this.getClass() + ": Warning. Not an  IDIcon").printStackTrace();
+            }
         }
     }
 
