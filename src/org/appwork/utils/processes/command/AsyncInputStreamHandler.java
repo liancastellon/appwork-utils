@@ -38,6 +38,8 @@ import java.io.IOException;
 public interface AsyncInputStreamHandler {
     public void waitFor() throws IOException, InterruptedException;
 
+    public void onExit(int exitCode);
+
     public void start();
 
     /**

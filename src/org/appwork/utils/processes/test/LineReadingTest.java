@@ -35,6 +35,7 @@ package org.appwork.utils.processes.test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.appwork.utils.Application;
 import org.appwork.utils.ide.IDEUtils;
@@ -50,17 +51,19 @@ import org.appwork.utils.processes.command.Command;
 public class LineReadingTest {
     public static void main(String[] args) throws IOException, InterruptedException, ClassNotFoundException {
         Application.setApplication(".tests");
-        if (false) {
+        if (true) {
             File projectRoot = IDEUtils.getProjectFolder();
-            Command command = new Command("cat", "/home/daniel/workspaceBuild/jdlog_9829264433151.txt", LineReadingTestProcess.class.getName());
+            Command command = new Command("cat", "/home/daniel/workspaceBuild/jdlog_7524186935451.txt", LineReadingTestProcess.class.getName());
+            final AtomicInteger lineCounter = new AtomicInteger(0);
             command.setOutputHandler(new AbstractLineHandler() {
                 @Override
                 public void handleLine(String line, Object caller) {
-                    System.out.println(line);
+                    lineCounter.incrementAndGet();
                 }
             });
             command.start(true);
             command.waitFor();
+            System.out.println("lines:" + lineCounter.get());
         } else {
             File projectRoot = IDEUtils.getProjectFolder();
             Command command = new Command(CrossSystem.getJavaBinary(), "-cp", new File(projectRoot, "bin").getAbsolutePath(), LineReadingTestProcess.class.getName());
