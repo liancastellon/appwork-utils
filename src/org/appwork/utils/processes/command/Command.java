@@ -53,7 +53,7 @@ public class Command {
     public final ProcessBuilder builder;
     private OutputHandler       lineHandler;
     private Process             process;
-    private int                 exitCode;
+    private int                 exitCode = -1;
 
     public int getExitCode() {
         return exitCode;
@@ -140,24 +140,30 @@ public class Command {
      *
      */
     public int waitFor() throws InterruptedException, IOException {
+        Integer exitCode = null;
         try {
             try {
                 exitCode = process.waitFor();
+                this.exitCode = exitCode;
                 return exitCode;
-            } finally {
-                if (lineHandler != null) {
-                    lineHandler.onExitCode(exitCode);
-                }
+            } catch (InterruptedException e) {
                 for (AsyncInputStreamHandler task : asyncTasks) {
-                    task.waitFor();
+                    task.interrupt();
                 }
+                throw e;
             }
-        } catch (InterruptedException e) {
+        } finally {
+            if (lineHandler != null && exitCode != null) {
+                lineHandler.onExitCode(exitCode);
+            }
             for (AsyncInputStreamHandler task : asyncTasks) {
-                task.interrupt();
+                if (exitCode != null) {
+                    task.onExit(exitCode);
+                }
+                task.waitFor();
             }
-            throw e;
         }
+
     }
 
     /**

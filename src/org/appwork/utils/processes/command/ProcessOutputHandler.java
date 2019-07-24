@@ -172,6 +172,17 @@ public class ProcessOutputHandler implements OutputHandler {
                 logger.exception("Swallowed Exception closeing Command Reader", e);
             }
         }
+
+        /*
+         * (non-Javadoc)
+         *
+         * @see org.appwork.utils.processes.command.AsyncInputStreamHandler#onExit(int)
+         */
+        @Override
+        public void onExit(int errorCode) {
+            processIsDead = true;
+
+        }
     }
 
     /*
@@ -202,7 +213,7 @@ public class ProcessOutputHandler implements OutputHandler {
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see org.appwork.utils.processes.command.OutputHandler#onExitCode(int)
      */
     @Override

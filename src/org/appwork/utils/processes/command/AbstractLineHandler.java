@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.appwork.loggingv3.LogV3;
 import org.appwork.utils.logging2.LogInterface;
@@ -61,7 +62,7 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
 
     public class LineReaderThread extends Thread implements AsyncInputStreamHandler {
         private final LineParsingInputStream is;
-        private volatile boolean             processIsDead;
+        private final AtomicBoolean          processExitedFlag = new AtomicBoolean(false);
 
         /**
          * @param charset
@@ -83,7 +84,7 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
 
         /*
          * (non-Javadoc)
-         *
+         * 
          * @see java.lang.Thread#run()
          */
         @Override
@@ -91,20 +92,29 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
             final byte[] buf = new byte[8192];
             while (true) {
                 try {
-                    final int read = is.read(buf);
-                    if (read <= 0) {
-                        if (processIsDead) {
-                            return;
-                        } else {
-                            Thread.sleep(50);
+                    if (is.available() <= 0 && !processExitedFlag.get()) {
+                        synchronized (processExitedFlag) {
+                            processExitedFlag.wait(100);
                         }
+                        continue;
                     }
                 } catch (IOException e) {
-                    if (!processIsDead) {
+                    if (!processExitedFlag.get()) {
                         logger.log(e);
                     }
+                    break;
                 } catch (InterruptedException e) {
-                    return;
+                    break;
+                }
+                try {
+                    final int read = is.read(buf);
+                    if (read <= 0 && processExitedFlag.get()) {
+                        break;
+                    }
+                } catch (IOException e) {
+                    if (!processExitedFlag.get()) {
+                        logger.log(e);
+                    }
                 }
             }
         }
@@ -126,7 +136,10 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
          *
          */
         public void waitFor() throws InterruptedException {
-            processIsDead = true;
+            synchronized (processExitedFlag) {
+                processExitedFlag.set(true);
+                processExitedFlag.notifyAll();
+            }
             try {
                 while (isAlive() && is.available() > 0) {
                     Thread.sleep(50);
@@ -135,6 +148,15 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
             } catch (IOException e) {
                 logger.exception("Swallowed Exception closeing Command Reader", e);
             }
+        }
+
+        @Override
+        public void onExit(int exitCode) {
+            synchronized (processExitedFlag) {
+                processExitedFlag.set(true);
+                processExitedFlag.notifyAll();
+            }
+
         }
     }
 
@@ -145,12 +167,11 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
      */
     @Override
     public void onExitCode(int exitCode) {
-        // TODO Auto-generated method stub
     }
 
     /*
      * (non-Javadoc)
-     *
+     * 
      * @see org.appwork.utils.processes.command.OutputHandler#createAsyncStreamHandler(java.lang.String, java.io.InputStream)
      */
     @Override
