@@ -191,6 +191,10 @@ public class Command {
      * @return
      */
     public Command putEnvironMent(String key, String value) {
+        if (key == null || value == null) {
+            LogV3.warning(key + "=" + value + " NullPointer Protection!");
+            return this;
+        }
         checkRunning();
         builder.environment().put(key, value);
         return this;
