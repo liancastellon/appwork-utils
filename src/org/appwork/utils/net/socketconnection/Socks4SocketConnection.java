@@ -124,6 +124,8 @@ public class Socks4SocketConnection extends SocketConnection {
         try {
             sayHello(proxySocket, logger);
             return establishConnection(this, proxySocket, proxy.getUser(), setEndPointSocketAddress(endPoint), this.getDestType(endPoint), logger);
+        } catch (ProxyConnectException e) {
+            throw e;
         } catch (final Socks4EndpointConnectException e) {
             throw new ProxyEndpointConnectException(e, proxy, endPoint);
         } catch (final IOException e) {
@@ -190,7 +192,12 @@ public class Socks4SocketConnection extends SocketConnection {
         os.flush();
         /* read response, 8 bytes */
         final InputStream is = proxySocket.getInputStream();
-        final byte[] read = SocketConnection.ensureRead(is, 2, null);
+        final byte[] read;
+        try {
+            read = SocketConnection.ensureRead(is, 2, null);
+        } catch (final IOException e) {
+            throw new ProxyEndpointConnectException(e, getProxy(), endPoint);
+        }
         final int[] resp = SocketConnection.byteArrayToIntArray(read);
         if (resp[0] != 0) {
             throw new IOException("Invalid response:" + resp[0]);

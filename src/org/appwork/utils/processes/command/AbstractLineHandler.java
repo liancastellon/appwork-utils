@@ -51,7 +51,7 @@ import org.appwork.utils.processes.LineHandler;
  *
  */
 public abstract class AbstractLineHandler implements LineHandler, OutputHandler {
-    private LogInterface logger;
+    private final LogInterface logger;
 
     /**
      *
@@ -61,9 +61,10 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
     }
 
     public class LineReaderThread extends Thread implements AsyncInputStreamHandler {
-        private volatile long                readBytes         = 0;
         private final LineParsingInputStream is;
-        private final AtomicBoolean          processExitedFlag = new AtomicBoolean(false);
+        private final AtomicBoolean          processExitedFlag  = new AtomicBoolean(false);
+        private volatile long                processReadCurrent = 0;
+        private final AtomicBoolean          streamClosedFlag   = new AtomicBoolean(false);
 
         /**
          * @param charset
@@ -90,10 +91,11 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
          */
         @Override
         public void run() {
-            final byte[] buf = new byte[8192];
+            final byte[] buf = new byte[4096];
             while (true) {
+                final int next;
                 try {
-                    if (is.available() <= 0 && !processExitedFlag.get()) {
+                    if ((next = is.available()) <= 0 && !processExitedFlag.get()) {
                         synchronized (processExitedFlag) {
                             processExitedFlag.wait(100);
                         }
@@ -108,11 +110,17 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
                     break;
                 }
                 try {
-                    final int read = is.read(buf);
+                    final int read;
+                    if (next <= 0 && processExitedFlag.get()) {
+                        read = -1;
+                    } else {
+                        read = is.read(buf, 0, Math.min(buf.length, next));
+                    }
                     if (read <= 0 && processExitedFlag.get()) {
                         break;
+                    } else {
+                        processReadCurrent += read;
                     }
-                    readBytes += read;
                 } catch (IOException e) {
                     if (!processExitedFlag.get()) {
                         logger.log(e);
@@ -123,22 +131,9 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
 
         @Override
         public void interrupt() {
-            if (!isAlive()) {
-                try {
-                    is.close();
-                } catch (IOException e) {
-                    logger.exception("Swallowed Exception closeing Command Reader", e);
-                } finally {
-                    super.interrupt();
-                }
-            } else {
-                // Workaround for blocking readers
-                new Thread("Stream Closer " + this) {
-                    /*
-                     * (non-Javadoc)
-                     *
-                     * @see java.lang.Thread#run()
-                     */
+            if (streamClosedFlag.compareAndSet(false, true)) {
+                final Thread asyncClosing = new Thread() {
+
                     @Override
                     public void run() {
                         try {
@@ -147,10 +142,14 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
                             logger.exception("Swallowed Exception closeing Command Reader", e);
                         }
                     }
-                }.start();
-                super.interrupt();
+                };
+                asyncClosing.run();
+                try {
+                    asyncClosing.join(100);
+                } catch (InterruptedException ignore) {
+                }
             }
-
+            super.interrupt();
         }
 
         /**
@@ -159,39 +158,39 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
          *
          */
         public void waitFor() throws InterruptedException {
-            synchronized (processExitedFlag) {
-                processExitedFlag.set(true);
-                processExitedFlag.notifyAll();
-            }
-            // try {
-
-            long bytesBefore = readBytes;
-            long started = System.currentTimeMillis();
-            while (isAlive()) {
-                if (bytesBefore == readBytes && System.currentTimeMillis() - started > 10000) {
-                    System.out.println("Time to say goodbye");
-                    break;
+            if (processExitedFlag.compareAndSet(false, true)) {
+                synchronized (processExitedFlag) {
+                    processExitedFlag.notifyAll();
                 }
-                if (bytesBefore != readBytes) {
-                    bytesBefore = readBytes;
-                    started = System.currentTimeMillis();
-                }
-                Thread.sleep(50);
             }
-
-            super.interrupt();
-            // } catch (IOException e) {
-            // logger.exception("Swallowed Exception closeing Command Reader", e);
-            // }
+            long processReadLast = processReadCurrent;
+            long timeStamp = System.currentTimeMillis();
+            try {
+                while (isAlive()) {
+                    final long now = processReadCurrent;
+                    if (processReadLast == now) {
+                        if (System.currentTimeMillis() - timeStamp > 10000) {
+                            System.out.println("wtf");
+                            break;
+                        }
+                    } else {
+                        processReadLast = now;
+                        timeStamp = System.currentTimeMillis();
+                    }
+                    Thread.sleep(50);
+                }
+            } finally {
+                interrupt();
+            }
         }
 
         @Override
         public void onExit(int exitCode) {
-            synchronized (processExitedFlag) {
-                processExitedFlag.set(true);
-                processExitedFlag.notifyAll();
+            if (processExitedFlag.compareAndSet(false, true)) {
+                synchronized (processExitedFlag) {
+                    processExitedFlag.notifyAll();
+                }
             }
-
         }
     }
 
