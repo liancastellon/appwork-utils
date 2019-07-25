@@ -186,6 +186,8 @@ public class Socks5SocketConnection extends SocketConnection {
                 break;
             }
             return establishConnection(this, proxySocket, setEndPointSocketAddress(endPoint), this.getDestType(endPoint), logger);
+        } catch (ProxyConnectException e) {
+            throw e;
         } catch (final Socks5AuthException e) {
             throw new ProxyAuthException(e, proxy);
         } catch (final Socks5EndpointConnectException e) {
@@ -274,7 +276,12 @@ public class Socks5SocketConnection extends SocketConnection {
         os.flush();
         /* read response, 4 bytes and then read rest of response */
         final InputStream is = proxySocket.getInputStream();
-        final byte[] read = SocketConnection.ensureRead(is, 4, null);
+        final byte[] read;
+        try {
+            read = SocketConnection.ensureRead(is, 4, null);
+        } catch (final IOException e) {
+            throw new ProxyEndpointConnectException(e, getProxy(), endpoint);
+        }
         final int[] resp = SocketConnection.byteArrayToIntArray(read);
         if (resp[0] != 5) {
             throw new IOException("Invalid response:" + resp[0]);
