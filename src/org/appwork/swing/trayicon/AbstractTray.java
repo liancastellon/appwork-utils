@@ -206,6 +206,7 @@ public abstract class AbstractTray implements MouseListener, MouseMotionListener
                 theOneAndOnly.doClick();
                 return;
             }
+
             Dimension ps = AbstractTray.this.jpopup.getPreferredSize();
             // SwingUtils.getUsableScreenBounds(SwingUtils.getScreenByLocation(e.getX(), e.getY()));
             final GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();

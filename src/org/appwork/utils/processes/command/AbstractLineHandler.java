@@ -61,6 +61,7 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
     }
 
     public class LineReaderThread extends Thread implements AsyncInputStreamHandler {
+        private volatile long                readBytes         = 0;
         private final LineParsingInputStream is;
         private final AtomicBoolean          processExitedFlag = new AtomicBoolean(false);
 
@@ -84,7 +85,7 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
 
         /*
          * (non-Javadoc)
-         * 
+         *
          * @see java.lang.Thread#run()
          */
         @Override
@@ -111,6 +112,7 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
                     if (read <= 0 && processExitedFlag.get()) {
                         break;
                     }
+                    readBytes += read;
                 } catch (IOException e) {
                     if (!processExitedFlag.get()) {
                         logger.log(e);
@@ -121,13 +123,34 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
 
         @Override
         public void interrupt() {
-            try {
-                is.close();
-            } catch (IOException e) {
-                logger.exception("Swallowed Exception closeing Command Reader", e);
-            } finally {
+            if (!isAlive()) {
+                try {
+                    is.close();
+                } catch (IOException e) {
+                    logger.exception("Swallowed Exception closeing Command Reader", e);
+                } finally {
+                    super.interrupt();
+                }
+            } else {
+                // Workaround for blocking readers
+                new Thread("Stream Closer " + this) {
+                    /*
+                     * (non-Javadoc)
+                     *
+                     * @see java.lang.Thread#run()
+                     */
+                    @Override
+                    public void run() {
+                        try {
+                            is.close();
+                        } catch (IOException e) {
+                            logger.exception("Swallowed Exception closeing Command Reader", e);
+                        }
+                    }
+                }.start();
                 super.interrupt();
             }
+
         }
 
         /**
@@ -140,14 +163,26 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
                 processExitedFlag.set(true);
                 processExitedFlag.notifyAll();
             }
-            try {
-                while (isAlive() && is.available() > 0) {
-                    Thread.sleep(50);
+            // try {
+
+            long bytesBefore = readBytes;
+            long started = System.currentTimeMillis();
+            while (isAlive()) {
+                if (bytesBefore == readBytes && System.currentTimeMillis() - started > 10000) {
+                    System.out.println("Time to say goodbye");
+                    break;
                 }
-                interrupt();
-            } catch (IOException e) {
-                logger.exception("Swallowed Exception closeing Command Reader", e);
+                if (bytesBefore != readBytes) {
+                    bytesBefore = readBytes;
+                    started = System.currentTimeMillis();
+                }
+                Thread.sleep(50);
             }
+
+            super.interrupt();
+            // } catch (IOException e) {
+            // logger.exception("Swallowed Exception closeing Command Reader", e);
+            // }
         }
 
         @Override
@@ -162,7 +197,7 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see org.appwork.utils.processes.command.OutputHandler#onExitCode(int)
      */
     @Override
@@ -171,7 +206,7 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see org.appwork.utils.processes.command.OutputHandler#createAsyncStreamHandler(java.lang.String, java.io.InputStream)
      */
     @Override
