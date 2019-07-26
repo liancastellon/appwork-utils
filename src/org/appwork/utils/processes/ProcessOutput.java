@@ -33,6 +33,7 @@
  * ==================================================================================================================================================== */
 package org.appwork.utils.processes;
 
+import java.io.ByteArrayOutputStream;
 import java.io.UnsupportedEncodingException;
 
 import org.appwork.exceptions.WTFException;
@@ -43,10 +44,19 @@ import org.appwork.utils.Exceptions;
  *
  */
 public class ProcessOutput {
-    private final int    exitCode;
-    private final byte[] stdOutData;
-    private final byte[] errOutData;
-    private String       codePage;
+    private final int                   exitCode;
+    private final ByteArrayOutputStream stdOutData;
+
+    public ByteArrayOutputStream getStdOutData() {
+        return stdOutData;
+    }
+
+    public ByteArrayOutputStream getErrOutData() {
+        return errOutData;
+    }
+
+    private final ByteArrayOutputStream errOutData;
+    private final String                codePage;
 
     /**
      * @param codePage
@@ -55,7 +65,7 @@ public class ProcessOutput {
      * @param byteArray2
      * @throws InterruptedException
      */
-    public ProcessOutput(int exitCode, byte[] stdOut, byte[] errOut, String codePage) {
+    public ProcessOutput(int exitCode, ByteArrayOutputStream stdOut, ByteArrayOutputStream errOut, String codePage) {
         this.exitCode = exitCode;
         this.stdOutData = stdOut;
         this.errOutData = errOut;
@@ -68,23 +78,15 @@ public class ProcessOutput {
     }
 
     public String getStdOutString(String charset) throws UnsupportedEncodingException {
-        return new String(getStdOutData(), charset);
+        return getStdOutData().toString(charset);
     }
 
     public String getErrOutString(String charset) throws UnsupportedEncodingException {
-        return new String(getErrOutData(), charset);
+        return getErrOutData().toString(charset);
     }
 
     public int getExitCode() {
         return exitCode;
-    }
-
-    public byte[] getStdOutData() {
-        return stdOutData;
-    }
-
-    public byte[] getErrOutData() {
-        return errOutData;
     }
 
     public String getStdOutString() {

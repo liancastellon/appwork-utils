@@ -59,6 +59,7 @@ public class LineReadingTest {
 
                 @Override
                 public void handleLine(String line, Object caller) {
+                    System.out.println(line);
                     lineCounter.incrementAndGet();
                 }
             });
