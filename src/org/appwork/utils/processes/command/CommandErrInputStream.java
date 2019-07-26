@@ -34,7 +34,6 @@
 package org.appwork.utils.processes.command;
 
 import java.io.FilterInputStream;
-import java.io.InputStream;
 
 /**
  * @author Thomas
@@ -45,7 +44,7 @@ public class CommandErrInputStream extends FilterInputStream {
     /**
      * @param in
      */
-    protected CommandErrInputStream(InputStream in) {
+    protected CommandErrInputStream(ProcessInputStream in) {
         super(in);
         // TODO Auto-generated constructor stub
     }

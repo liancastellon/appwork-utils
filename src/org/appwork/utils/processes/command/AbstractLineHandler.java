@@ -64,7 +64,6 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
         private final LineParsingInputStream is;
         private final AtomicBoolean          processExitedFlag  = new AtomicBoolean(false);
         private volatile long                processReadCurrent = 0;
-        private final AtomicBoolean          streamClosedFlag   = new AtomicBoolean(false);
 
         /**
          * @param charset
@@ -84,40 +83,18 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
             };
         }
 
-        /*
-         * (non-Javadoc)
-         *
-         * @see java.lang.Thread#run()
-         */
         @Override
         public void run() {
-            final byte[] buf = new byte[4096];
+            final byte[] buf = new byte[8192];
             while (true) {
-                final int next;
                 try {
-                    if ((next = is.available()) <= 0 && !processExitedFlag.get()) {
-                        synchronized (processExitedFlag) {
-                            processExitedFlag.wait(100);
+                    final int read = is.read(buf);
+                    if (read <= 0) {
+                        if (processExitedFlag.get()) {
+                            return;
+                        } else {
+                            Thread.sleep(50);
                         }
-                        continue;
-                    }
-                } catch (IOException e) {
-                    if (!processExitedFlag.get()) {
-                        logger.log(e);
-                    }
-                    break;
-                } catch (InterruptedException e) {
-                    break;
-                }
-                try {
-                    final int read;
-                    if (next <= 0 && processExitedFlag.get()) {
-                        read = -1;
-                    } else {
-                        read = is.read(buf, 0, Math.min(buf.length, next));
-                    }
-                    if (read <= 0 && processExitedFlag.get()) {
-                        break;
                     } else {
                         processReadCurrent += read;
                     }
@@ -125,31 +102,30 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
                     if (!processExitedFlag.get()) {
                         logger.log(e);
                     }
+                } catch (InterruptedException e) {
+                    return;
                 }
             }
         }
 
         @Override
         public void interrupt() {
-            if (streamClosedFlag.compareAndSet(false, true)) {
-                final Thread asyncClosing = new Thread() {
-
-                    @Override
-                    public void run() {
-                        try {
-                            is.close();
-                        } catch (IOException e) {
-                            logger.exception("Swallowed Exception closeing Command Reader", e);
-                        }
-                    }
-                };
-                asyncClosing.run();
+            try {
                 try {
-                    asyncClosing.join(100);
-                } catch (InterruptedException ignore) {
+                    is.close();
+                } catch (IOException ignore) {
+                }
+            } finally {
+                super.interrupt();
+            }
+        }
+
+        protected void notifyProcessExited() {
+            if (processExitedFlag.compareAndSet(false, true)) {
+                synchronized (processExitedFlag) {
+                    processExitedFlag.notifyAll();
                 }
             }
-            super.interrupt();
         }
 
         /**
@@ -158,11 +134,7 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
          *
          */
         public void waitFor() throws InterruptedException {
-            if (processExitedFlag.compareAndSet(false, true)) {
-                synchronized (processExitedFlag) {
-                    processExitedFlag.notifyAll();
-                }
-            }
+            notifyProcessExited();
             long processReadLast = processReadCurrent;
             long timeStamp = System.currentTimeMillis();
             try {
@@ -170,7 +142,6 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
                     final long now = processReadCurrent;
                     if (processReadLast == now) {
                         if (System.currentTimeMillis() - timeStamp > 10000) {
-                            System.out.println("wtf");
                             break;
                         }
                     } else {
@@ -186,28 +157,14 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
 
         @Override
         public void onExit(int exitCode) {
-            if (processExitedFlag.compareAndSet(false, true)) {
-                synchronized (processExitedFlag) {
-                    processExitedFlag.notifyAll();
-                }
-            }
+            notifyProcessExited();
         }
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.appwork.utils.processes.command.OutputHandler#onExitCode(int)
-     */
     @Override
     public void onExitCode(int exitCode) {
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.appwork.utils.processes.command.OutputHandler#createAsyncStreamHandler(java.lang.String, java.io.InputStream)
-     */
     @Override
     public AsyncInputStreamHandler createAsyncStreamHandler(CommandErrInputStream inputStream, Charset charset) throws UnsupportedEncodingException, InterruptedException {
         return new LineReaderThread(this, charset, inputStream);

@@ -40,7 +40,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.appwork.loggingv3.LogV3;
-import org.appwork.utils.logging2.LogInterface;
 import org.appwork.utils.parser.ShellParser;
 import org.appwork.utils.processes.ProcessBuilderFactory;
 
@@ -50,16 +49,14 @@ import org.appwork.utils.processes.ProcessBuilderFactory;
  *
  */
 public class Command {
-    public final ProcessBuilder builder;
-    private OutputHandler       lineHandler;
-    private Process             process;
-    private int                 exitCode = -1;
+    protected final ProcessBuilder builder;
+    private OutputHandler          lineHandler;
+    private Process                process;
+    private int                    exitCode = -1;
 
     public int getExitCode() {
         return exitCode;
     }
-
-    private LogInterface logger;
 
     /**
      * @param javaBinary
@@ -69,7 +66,6 @@ public class Command {
      */
     public Command(String... cmds) {
         builder = ProcessBuilderFactory.create(cmds);
-        logger = LogV3.logger(this);
         try {
             charset = Charset.forName(ProcessBuilderFactory.getConsoleCodepage());
         } catch (InterruptedException e) {
@@ -120,8 +116,8 @@ public class Command {
         }
         final OutputHandler lh = lineHandler;
         if (lh != null) {
-            asyncTasks.add(lh.createAsyncStreamHandler(new CommandStdInputStream(process.getInputStream()), getCharset()));
-            asyncTasks.add(lh.createAsyncStreamHandler(new CommandErrInputStream(process.getErrorStream()), getCharset()));
+            asyncTasks.add(lh.createAsyncStreamHandler(new CommandStdInputStream(new ProcessInputStream(process, process.getInputStream())), getCharset()));
+            asyncTasks.add(lh.createAsyncStreamHandler(new CommandErrInputStream(new ProcessInputStream(process, process.getErrorStream())), getCharset()));
         }
         for (final AsyncInputStreamHandler task : asyncTasks) {
             task.start();
@@ -147,7 +143,7 @@ public class Command {
                 this.exitCode = exitCode;
                 return exitCode;
             } catch (InterruptedException e) {
-                for (AsyncInputStreamHandler task : asyncTasks) {
+                for (final AsyncInputStreamHandler task : asyncTasks) {
                     task.interrupt();
                 }
                 throw e;
@@ -156,7 +152,7 @@ public class Command {
             if (lineHandler != null && exitCode != null) {
                 lineHandler.onExitCode(exitCode);
             }
-            for (AsyncInputStreamHandler task : asyncTasks) {
+            for (final AsyncInputStreamHandler task : asyncTasks) {
                 if (exitCode != null) {
                     task.onExit(exitCode);
                 }
@@ -179,7 +175,7 @@ public class Command {
     /**
      *
      */
-    private void checkRunning() {
+    protected void checkRunning() {
         if (process != null) {
             throw new IllegalStateException("Process already running. You have to do this  BEFORE calling #start()");
         }

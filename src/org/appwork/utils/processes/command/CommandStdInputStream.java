@@ -34,7 +34,6 @@
 package org.appwork.utils.processes.command;
 
 import java.io.FilterInputStream;
-import java.io.InputStream;
 
 /**
  * @author Thomas
@@ -45,7 +44,7 @@ public class CommandStdInputStream extends FilterInputStream {
     /**
      * @param in
      */
-    protected CommandStdInputStream(InputStream in) {
+    protected CommandStdInputStream(ProcessInputStream in) {
         super(in);
     }
 }
