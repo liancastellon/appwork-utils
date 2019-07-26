@@ -36,11 +36,9 @@ package org.appwork.utils.processes;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.appwork.loggingv3.LogV3;
 import org.appwork.utils.Regex;
@@ -48,131 +46,9 @@ import org.appwork.utils.StringUtils;
 import org.appwork.utils.os.CrossSystem;
 import org.appwork.utils.processes.command.ProcessErrorStream;
 import org.appwork.utils.processes.command.ProcessInputStream;
+import org.appwork.utils.processes.command.ProcessStreamReader;
 
 public class ProcessBuilderFactory {
-    /**
-     * @author Thomas
-     * @date 17.10.2018
-     *
-     */
-    protected static class ProcessStreamReader extends Thread {
-
-        private final Process       process;
-        private final InputStream   is;
-        private final OutputStream  os;
-        private final AtomicBoolean processExitedFlag  = new AtomicBoolean(false);
-        private volatile long       processReadCurrent = 0;
-
-        protected ProcessStreamReader(String name, Process process, final InputStream input, OutputStream output) {
-            super(name);
-            this.process = process;
-            this.is = input;
-            this.os = output;
-            this.setDaemon(true);
-        }
-
-        @Override
-        public void run() {
-            try {
-                final byte[] buf = new byte[8 * 1024];
-                while (true) {
-                    final int available;
-                    try {
-                        if ((available = is.available()) <= 0 && !processExitedFlag.get()) {
-                            synchronized (processExitedFlag) {
-                                processExitedFlag.wait(10);
-                            }
-                            continue;
-                        }
-                    } catch (IOException e) {
-                        if (!processExitedFlag.get()) {
-                            LogV3.logger(ProcessBuilderFactory.class).log(e);
-                        }
-                        break;
-                    } catch (InterruptedException e) {
-                        break;
-                    }
-                    try {
-                        final int read;
-                        if (available <= 0 && processExitedFlag.get()) {
-                            read = -1;
-                        } else {
-                            read = is.read(buf, 0, Math.min(buf.length, available));
-                        }
-                        if (read <= 0 && processExitedFlag.get()) {
-                            break;
-                        } else {
-                            processReadCurrent += read;
-                            os.write(buf, 0, read);
-                        }
-                    } catch (IOException e) {
-                        if (!processExitedFlag.get()) {
-                            LogV3.logger(ProcessBuilderFactory.class).log(e);
-                        }
-                        break;
-                    }
-                }
-            } finally {
-                try {
-                    process.exitValue();
-                } catch (IllegalThreadStateException e2) {
-                    process.destroy();
-                }
-            }
-        }
-
-        @Override
-        public void interrupt() {
-            try {
-                try {
-                    is.close();
-                } catch (IOException ignore) {
-                }
-            } finally {
-                super.interrupt();
-            }
-        }
-
-        protected void notifyProcessExited() {
-            if (processExitedFlag.compareAndSet(false, true)) {
-                synchronized (processExitedFlag) {
-                    processExitedFlag.notifyAll();
-                }
-            }
-        }
-
-        protected long getProcessRead() {
-            return processReadCurrent;
-        }
-
-        /**
-         * @throws InterruptedException
-         * @throws IOException
-         *
-         */
-        protected void waitFor() throws InterruptedException {
-            notifyProcessExited();
-            long processReadLast = getProcessRead();
-            long timeStamp = System.currentTimeMillis();
-            try {
-                while (isAlive()) {
-                    final long now = getProcessRead();
-                    if (processReadLast == now) {
-                        if (System.currentTimeMillis() - timeStamp > 10000) {
-                            break;
-                        }
-                    } else {
-                        processReadLast = now;
-                        timeStamp = System.currentTimeMillis();
-                    }
-                    Thread.sleep(50);
-                }
-            } finally {
-                interrupt();
-            }
-        }
-    }
-
     private static String CONSOLE_CODEPAGE = null;
 
     public static ProcessOutput runCommand(final java.util.List<String> commands) throws IOException, InterruptedException {
@@ -187,7 +63,7 @@ public class ProcessBuilderFactory {
         final ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
         final ByteArrayOutputStream sdtStream = new ByteArrayOutputStream();
         int exitCode = runCommand(pb, errorStream, sdtStream);
-        return new ProcessOutput(exitCode, sdtStream.toByteArray(), errorStream.toByteArray(), getConsoleCodepage());
+        return new ProcessOutput(exitCode, sdtStream, errorStream, getConsoleCodepage());
     }
 
     public static int runCommand(ProcessBuilder pb, final OutputStream errorStream, final OutputStream sdtStream) throws IOException, InterruptedException {

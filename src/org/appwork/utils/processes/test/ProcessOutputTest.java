@@ -33,12 +33,8 @@
  * ==================================================================================================================================================== */
 package org.appwork.utils.processes.test;
 
-import java.io.File;
 import java.io.IOException;
 
-import org.appwork.utils.Application;
-import org.appwork.utils.ide.IDEUtils;
-import org.appwork.utils.os.CrossSystem;
 import org.appwork.utils.processes.ProcessOutput;
 import org.appwork.utils.processes.command.Command;
 import org.appwork.utils.processes.command.ProcessOutputHandler;
@@ -50,17 +46,12 @@ import org.appwork.utils.processes.command.ProcessOutputHandler;
  */
 public class ProcessOutputTest {
     public static void main(String[] args) throws IOException, InterruptedException, ClassNotFoundException {
-        Application.setApplication(".tests");
-        File projectRoot = IDEUtils.getProjectFolder();
-        Command command = new Command(CrossSystem.getJavaBinary(), "-cp", new File(projectRoot, "bin").getAbsolutePath(), LineReadingTestProcess.class.getName());
+        Command command = new Command("du", "-h");
         ProcessOutputHandler po;
         command.setOutputHandler(po = new ProcessOutputHandler());
         command.start(true);
         command.waitFor();
         ProcessOutput out = po.getResult();
         System.out.println(out);
-        // ProcessBuilderFactory.runCommand(ProcessBuilderFactory.create(CrossSystem.getJavaBinary(), "-cp", new File(projectRoot,
-        // "bin").getAbsolutePath(), LineReadingTestProcess.class.getName()), new NullOutputStream(), new NullOutputStream());
-        ;
     }
 }

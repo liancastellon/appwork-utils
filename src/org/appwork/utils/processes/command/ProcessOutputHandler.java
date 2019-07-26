@@ -35,12 +35,9 @@ package org.appwork.utils.processes.command;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 
-import org.appwork.loggingv3.LogV3;
-import org.appwork.utils.logging2.LogInterface;
 import org.appwork.utils.processes.ProcessOutput;
 
 /**
@@ -49,163 +46,73 @@ import org.appwork.utils.processes.ProcessOutput;
  *
  */
 public class ProcessOutputHandler implements OutputHandler {
-    private LogInterface          logger;
+
     private ByteArrayOutputStream baoErr;
     private ByteArrayOutputStream baoStd;
     private Charset               charset;
-    private int                   exitCode;
+    private int                   exitCode = -1;
 
     /**
      *
      */
     public ProcessOutputHandler() {
-        logger = LogV3.defaultLogger();
     }
 
-    public class ReaderThread extends Thread implements AsyncInputStreamHandler {
-        private final InputStream     is;
-        private volatile boolean      processIsDead;
-        private ByteArrayOutputStream output;
+    protected boolean killProcessInFinally(ProcessStreamReader streamReader, Exception e) {
+        // old inner ReaderThread class did not kill Process
+        return false;
+    }
 
-        /**
-         * @param charset
-         * @param lh
-         * @param inputStream
-         * @param output
-         * @throws UnsupportedEncodingException
-         * @throws InterruptedException
-         */
-        public ReaderThread(final OutputHandler lineHandler, Charset charset, final InputStream inputStream, ByteArrayOutputStream output) throws UnsupportedEncodingException, InterruptedException {
-            super(inputStream.getClass().getSimpleName());
-            setDaemon(true);
-            this.is = inputStream;
-            this.output = output;
-        }
-
-        /*
-         * (non-Javadoc)
-         *
-         * @see java.lang.Thread#run()
-         */
-        @Override
-        public void run() {
-            try {
-                final byte[] buffer = new byte[1024];
-                int len = 0;
-                boolean wait = false;
-                while (true) {
-                    if (processIsDead && is.available() == 0) {
-                        return;
-                    }
-                    len = is.read(buffer);
-                    if (processIsDead && len == 0) {
-                        // according to
-                        // https://stackoverflow.com/questions/2319395/what-0-returned-by-inputstream-read-means-how-to-handle-this, this
-                        // method MAY return 0 if nothing is read.
-                        // so this is a workaround for bad inputstream implementations that might result in endless blocking readers
-                        return;
-                    }
-                    if (len == -1) {
-                        break;
-                    } else if (len > 0) {
-                        wait = false;
-                        output.write(buffer, 0, len);
-                    } else {
-                        if (wait == false) {
-                            wait = true;
-                        }
-                        Thread.sleep(10);
-                    }
-                }
-            } catch (InterruptedException e) {
-                return;
-            } catch (final IOException e) {
-                if (!processIsDead) {
-                    logger.log(e);
-                }
-            }
-            final byte[] buf = new byte[8192];
-            while (true) {
-                try {
-                    final int read = is.read(buf);
-                    if (read <= 0) {
-                        if (processIsDead) {
-                            return;
-                        } else {
-                            Thread.sleep(50);
-                        }
-                    }
-                } catch (IOException e) {
-                    if (!processIsDead) {
-                        logger.log(e);
-                    }
-                } catch (InterruptedException e) {
-                    return;
-                }
-            }
-        }
-
-        @Override
-        public void interrupt() {
-            try {
-                is.close();
-            } catch (IOException e) {
-                logger.exception("Swallowed Exception closeing Command Reader", e);
-            } finally {
-                super.interrupt();
-            }
-        }
-
-        /**
-         * @throws InterruptedException
-         * @throws IOException
-         *
-         */
-        public void waitFor() throws InterruptedException {
-            processIsDead = true;
-            try {
-                while (isAlive() && is.available() > 0) {
-                    Thread.sleep(50);
-                }
-                interrupt();
-            } catch (IOException e) {
-                logger.exception("Swallowed Exception closeing Command Reader", e);
-            }
-        }
-
-        @Override
-        public void onExit(int errorCode) {
-            processIsDead = true;
-
-        }
+    protected boolean ignoreOutputStreamException(ProcessStreamReader streamReader, IOException e) {
+        // old inner ReaderThread class did ignore write exceptions
+        return true;
     }
 
     @Override
     public AsyncInputStreamHandler createAsyncStreamHandler(ProcessInputStream inputStream, Charset charset) throws UnsupportedEncodingException, InterruptedException {
         this.baoStd = new ByteArrayOutputStream();
         this.charset = charset;
-        return new ReaderThread(this, charset, inputStream, baoStd);
+        final Process process = inputStream.getProcess();
+        return new ProcessStreamReader("Process-Reader-Std:" + process, process, inputStream, baoStd) {
+
+            @Override
+            protected boolean ignoreOutputStreamException(IOException e) {
+                return ProcessOutputHandler.this.ignoreOutputStreamException(this, e);
+            }
+
+            @Override
+            protected boolean killProcessInFinally(Exception e) {
+                return ProcessOutputHandler.this.killProcessInFinally(this, e);
+            }
+        };
     }
 
     @Override
     public AsyncInputStreamHandler createAsyncStreamHandler(ProcessErrorStream errorStream, Charset charset) throws UnsupportedEncodingException, InterruptedException {
         this.baoErr = new ByteArrayOutputStream();
         this.charset = charset;
-        return new ReaderThread(this, charset, errorStream, baoErr);
+        final Process process = errorStream.getProcess();
+        return new ProcessStreamReader("Process-Reader-Error:" + process, process, errorStream, baoErr) {
+
+            @Override
+            protected boolean ignoreOutputStreamException(IOException e) {
+                return ProcessOutputHandler.this.ignoreOutputStreamException(this, e);
+            }
+
+            @Override
+            protected boolean killProcessInFinally(Exception e) {
+                return ProcessOutputHandler.this.killProcessInFinally(this, e);
+            }
+        };
     }
 
     /**
      * @return
      */
     public ProcessOutput getResult() {
-        return new ProcessOutput(exitCode, baoStd.toByteArray(), baoErr.toByteArray(), charset.name());
+        return new ProcessOutput(exitCode, baoStd, baoErr, charset.name());
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.appwork.utils.processes.command.OutputHandler#onExitCode(int)
-     */
     @Override
     public void onExitCode(int exitCode) {
         this.exitCode = exitCode;

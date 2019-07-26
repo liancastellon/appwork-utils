@@ -37,12 +37,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
-import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.appwork.loggingv3.LogV3;
-import org.appwork.utils.logging2.LogInterface;
 import org.appwork.utils.net.LineParsingInputStream;
 import org.appwork.utils.net.LineParsingOutputStream.NEWLINE;
+import org.appwork.utils.net.NullOutputStream;
 import org.appwork.utils.processes.LineHandler;
 
 /**
@@ -51,153 +49,80 @@ import org.appwork.utils.processes.LineHandler;
  *
  */
 public abstract class AbstractLineHandler implements LineHandler, OutputHandler {
-    private final LogInterface logger;
 
     public AbstractLineHandler() {
-        logger = LogV3.defaultLogger();
-    }
-
-    protected class LineReaderThread extends Thread implements AsyncInputStreamHandler {
-        private final LineParsingInputStream is;
-        private final AtomicBoolean          processExitedFlag  = new AtomicBoolean(false);
-        private volatile long                processReadCurrent = 0;
-        private final int                    bufSize;
-
-        /**
-         * @param charset
-         * @param lh
-         * @param inputStream
-         * @throws UnsupportedEncodingException
-         * @throws InterruptedException
-         */
-        protected LineReaderThread(final LineHandler lineHandler, Charset charset, final InputStream inputStream, final int bufSize) throws UnsupportedEncodingException, InterruptedException {
-            super(inputStream.getClass().getSimpleName());
-            setDaemon(true);
-            this.bufSize = bufSize;
-            this.is = new LineParsingInputStream(inputStream, charset) {
-                @Override
-                protected void onNextLine(NEWLINE newLine, long line, StringBuilder sb, int startIndex, int endIndex) {
-                    lineHandler.handleLine(sb.substring(startIndex, endIndex), LineReaderThread.this);
-                }
-            };
-        }
-
-        @Override
-        public void run() {
-            final byte[] buf = new byte[bufSize];
-            while (true) {
-                final int available;
-                try {
-                    if ((available = is.available()) <= 0 && !processExitedFlag.get()) {
-                        synchronized (processExitedFlag) {
-                            processExitedFlag.wait(10);
-                        }
-                        continue;
-                    }
-                } catch (IOException e) {
-                    if (!processExitedFlag.get()) {
-                        logger.log(e);
-                    }
-                    break;
-                } catch (InterruptedException e) {
-                    break;
-                }
-                try {
-                    final int read;
-                    if (available <= 0 && processExitedFlag.get()) {
-                        read = -1;
-                    } else {
-                        read = is.read(buf, 0, Math.min(buf.length, available));
-                    }
-                    if (read <= 0 && processExitedFlag.get()) {
-                        break;
-                    } else {
-                        processReadCurrent += read;
-                    }
-                } catch (IOException e) {
-                    if (!processExitedFlag.get()) {
-                        logger.log(e);
-                    }
-                }
-            }
-        }
-
-        @Override
-        public void interrupt() {
-            try {
-                try {
-                    is.close();
-                } catch (IOException ignore) {
-                }
-            } finally {
-                super.interrupt();
-            }
-        }
-
-        protected void notifyProcessExited() {
-            if (processExitedFlag.compareAndSet(false, true)) {
-                synchronized (processExitedFlag) {
-                    processExitedFlag.notifyAll();
-                }
-            }
-        }
-
-        protected long getProcessRead() {
-            return processReadCurrent;
-        }
-
-        /**
-         * @throws InterruptedException
-         * @throws IOException
-         *
-         */
-        public void waitFor() throws InterruptedException {
-            notifyProcessExited();
-            long processReadLast = getProcessRead();
-            long timeStamp = System.currentTimeMillis();
-            try {
-                while (isAlive()) {
-                    final long now = getProcessRead();
-                    if (processReadLast == now) {
-                        if (System.currentTimeMillis() - timeStamp > getMaxWaitFor(this)) {
-                            break;
-                        }
-                    } else {
-                        processReadLast = now;
-                        timeStamp = System.currentTimeMillis();
-                    }
-                    Thread.sleep(50);
-                }
-            } finally {
-                interrupt();
-            }
-        }
-
-        @Override
-        public void onExit(int exitCode) {
-            notifyProcessExited();
-        }
-    }
-
-    protected int getMaxWaitFor(LineReaderThread reader) {
-        return 10000;
     }
 
     protected int getLineReaderBufferSize() {
         return 8 * 1024;
     }
 
+    protected boolean killProcessInFinally(ProcessStreamReader streamReader, Exception e) {
+        // old inner LineReaderThread class did not kill Process
+        return false;
+    }
+
+    protected boolean ignoreOutputStreamException(ProcessStreamReader streamReader, IOException e) {
+        // old inner LineReaderThread had no outputstream
+        return true;
+    }
+
     @Override
     public void onExitCode(int exitCode) {
     }
 
+    protected LineParsingInputStream createLineParsingInputStream(InputStream inputStream, Charset charset) throws UnsupportedEncodingException {
+        return new LineParsingInputStream(inputStream, charset) {
+            @Override
+            protected void onNextLine(NEWLINE newLine, long line, StringBuilder sb, int startIndex, int endIndex) {
+                AbstractLineHandler.this.handleLine(sb.substring(startIndex, endIndex), AbstractLineHandler.this);
+            }
+        };
+    }
+
     @Override
     public AsyncInputStreamHandler createAsyncStreamHandler(ProcessInputStream inputStream, Charset charset) throws UnsupportedEncodingException, InterruptedException {
-        return new LineReaderThread(this, charset, inputStream, getLineReaderBufferSize());
+        final LineParsingInputStream is = createLineParsingInputStream(inputStream, charset);
+        final Process process = inputStream.getProcess();
+        return new ProcessStreamReader("Line-Reader-Std:" + process, process, is, new NullOutputStream()) {
+
+            @Override
+            protected int getReadBufferSize() {
+                return getLineReaderBufferSize();
+            }
+
+            @Override
+            protected boolean ignoreOutputStreamException(IOException e) {
+                return AbstractLineHandler.this.ignoreOutputStreamException(this, e);
+            }
+
+            @Override
+            protected boolean killProcessInFinally(Exception e) {
+                return AbstractLineHandler.this.killProcessInFinally(this, e);
+            }
+        };
     }
 
     @Override
     public AsyncInputStreamHandler createAsyncStreamHandler(ProcessErrorStream inputStream, Charset charset) throws UnsupportedEncodingException, InterruptedException {
-        return new LineReaderThread(this, charset, inputStream, getLineReaderBufferSize());
+        final LineParsingInputStream is = createLineParsingInputStream(inputStream, charset);
+        final Process process = inputStream.getProcess();
+        return new ProcessStreamReader("Line-Reader-Error:" + process, process, is, new NullOutputStream()) {
+
+            @Override
+            protected int getReadBufferSize() {
+                return getLineReaderBufferSize();
+            }
+
+            @Override
+            protected boolean ignoreOutputStreamException(IOException e) {
+                return AbstractLineHandler.this.ignoreOutputStreamException(this, e);
+            }
+
+            @Override
+            protected boolean killProcessInFinally(Exception e) {
+                return AbstractLineHandler.this.killProcessInFinally(this, e);
+            }
+        };
     }
 }
