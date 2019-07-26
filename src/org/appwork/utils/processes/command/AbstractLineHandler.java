@@ -53,17 +53,15 @@ import org.appwork.utils.processes.LineHandler;
 public abstract class AbstractLineHandler implements LineHandler, OutputHandler {
     private final LogInterface logger;
 
-    /**
-     *
-     */
     public AbstractLineHandler() {
         logger = LogV3.defaultLogger();
     }
 
-    public class LineReaderThread extends Thread implements AsyncInputStreamHandler {
+    protected class LineReaderThread extends Thread implements AsyncInputStreamHandler {
         private final LineParsingInputStream is;
         private final AtomicBoolean          processExitedFlag  = new AtomicBoolean(false);
         private volatile long                processReadCurrent = 0;
+        private final int                    bufSize;
 
         /**
          * @param charset
@@ -72,9 +70,10 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
          * @throws UnsupportedEncodingException
          * @throws InterruptedException
          */
-        public LineReaderThread(final LineHandler lineHandler, Charset charset, final InputStream inputStream) throws UnsupportedEncodingException, InterruptedException {
+        protected LineReaderThread(final LineHandler lineHandler, Charset charset, final InputStream inputStream, final int bufSize) throws UnsupportedEncodingException, InterruptedException {
             super(inputStream.getClass().getSimpleName());
             setDaemon(true);
+            this.bufSize = bufSize;
             this.is = new LineParsingInputStream(inputStream, charset) {
                 @Override
                 protected void onNextLine(NEWLINE newLine, long line, StringBuilder sb, int startIndex, int endIndex) {
@@ -85,16 +84,33 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
 
         @Override
         public void run() {
-            final byte[] buf = new byte[8192];
+            final byte[] buf = new byte[bufSize];
             while (true) {
+                final int available;
                 try {
-                    final int read = is.read(buf);
-                    if (read <= 0) {
-                        if (processExitedFlag.get()) {
-                            return;
-                        } else {
-                            Thread.sleep(50);
+                    if ((available = is.available()) <= 0 && !processExitedFlag.get()) {
+                        synchronized (processExitedFlag) {
+                            processExitedFlag.wait(10);
                         }
+                        continue;
+                    }
+                } catch (IOException e) {
+                    if (!processExitedFlag.get()) {
+                        logger.log(e);
+                    }
+                    break;
+                } catch (InterruptedException e) {
+                    break;
+                }
+                try {
+                    final int read;
+                    if (available <= 0 && processExitedFlag.get()) {
+                        read = -1;
+                    } else {
+                        read = is.read(buf, 0, Math.min(buf.length, available));
+                    }
+                    if (read <= 0 && processExitedFlag.get()) {
+                        break;
                     } else {
                         processReadCurrent += read;
                     }
@@ -102,8 +118,6 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
                     if (!processExitedFlag.get()) {
                         logger.log(e);
                     }
-                } catch (InterruptedException e) {
-                    return;
                 }
             }
         }
@@ -128,6 +142,10 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
             }
         }
 
+        protected long getProcessRead() {
+            return processReadCurrent;
+        }
+
         /**
          * @throws InterruptedException
          * @throws IOException
@@ -135,13 +153,13 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
          */
         public void waitFor() throws InterruptedException {
             notifyProcessExited();
-            long processReadLast = processReadCurrent;
+            long processReadLast = getProcessRead();
             long timeStamp = System.currentTimeMillis();
             try {
                 while (isAlive()) {
-                    final long now = processReadCurrent;
+                    final long now = getProcessRead();
                     if (processReadLast == now) {
-                        if (System.currentTimeMillis() - timeStamp > 10000) {
+                        if (System.currentTimeMillis() - timeStamp > getMaxWaitFor(this)) {
                             break;
                         }
                     } else {
@@ -161,17 +179,25 @@ public abstract class AbstractLineHandler implements LineHandler, OutputHandler 
         }
     }
 
+    protected int getMaxWaitFor(LineReaderThread reader) {
+        return 10000;
+    }
+
+    protected int getLineReaderBufferSize() {
+        return 8 * 1024;
+    }
+
     @Override
     public void onExitCode(int exitCode) {
     }
 
     @Override
-    public AsyncInputStreamHandler createAsyncStreamHandler(CommandErrInputStream inputStream, Charset charset) throws UnsupportedEncodingException, InterruptedException {
-        return new LineReaderThread(this, charset, inputStream);
+    public AsyncInputStreamHandler createAsyncStreamHandler(ProcessInputStream inputStream, Charset charset) throws UnsupportedEncodingException, InterruptedException {
+        return new LineReaderThread(this, charset, inputStream, getLineReaderBufferSize());
     }
 
     @Override
-    public AsyncInputStreamHandler createAsyncStreamHandler(CommandStdInputStream inputStream, Charset charset) throws UnsupportedEncodingException, InterruptedException {
-        return new LineReaderThread(this, charset, inputStream);
+    public AsyncInputStreamHandler createAsyncStreamHandler(ProcessErrorStream inputStream, Charset charset) throws UnsupportedEncodingException, InterruptedException {
+        return new LineReaderThread(this, charset, inputStream, getLineReaderBufferSize());
     }
 }

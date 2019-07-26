@@ -42,7 +42,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @date Jul 26, 2019
  *
  */
-public class ProcessInputStream extends InputStream {
+public class ProcessErrorStream extends InputStream {
 
     protected final Process process;
 
@@ -53,17 +53,17 @@ public class ProcessInputStream extends InputStream {
     protected volatile boolean  processAlive = true;
     protected final InputStream is;
 
-    public ProcessInputStream(final Process process) {
+    public ProcessErrorStream(final Process process) {
         this.process = process;
-        this.is = process.getErrorStream();
-        new Thread("ProcessInputStreamWaitFor:" + process) {
+        this.is = process.getInputStream();
+        new Thread("ProcessErrorStreamWaitFor:" + process) {
             {
                 setDaemon(true);
             }
 
             public void run() {
                 try {
-                    ProcessInputStream.this.process.waitFor();
+                    ProcessErrorStream.this.process.waitFor();
                     processAlive = false;
                 } catch (InterruptedException e) {
                 }
@@ -101,7 +101,7 @@ public class ProcessInputStream extends InputStream {
     @Override
     public void close() throws IOException {
         if (closedFlag.compareAndSet(false, true)) {
-            final Thread thread = new Thread("ProcessInputStreamAsyncClose") {
+            final Thread thread = new Thread("ProcessErrorStreamAsyncClose") {
                 {
                     setDaemon(true);
                 }

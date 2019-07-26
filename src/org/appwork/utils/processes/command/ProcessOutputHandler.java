@@ -173,11 +173,6 @@ public class ProcessOutputHandler implements OutputHandler {
             }
         }
 
-        /*
-         * (non-Javadoc)
-         *
-         * @see org.appwork.utils.processes.command.AsyncInputStreamHandler#onExit(int)
-         */
         @Override
         public void onExit(int errorCode) {
             processIsDead = true;
@@ -185,23 +180,18 @@ public class ProcessOutputHandler implements OutputHandler {
         }
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.appwork.utils.processes.command.OutputHandler#createAsyncStreamHandler(java.lang.String, java.io.InputStream)
-     */
     @Override
-    public AsyncInputStreamHandler createAsyncStreamHandler(CommandErrInputStream inputStream, Charset charset) throws UnsupportedEncodingException, InterruptedException {
-        this.baoErr = new ByteArrayOutputStream();
-        this.charset = charset;
-        return new ReaderThread(this, charset, inputStream, baoErr);
-    }
-
-    @Override
-    public AsyncInputStreamHandler createAsyncStreamHandler(CommandStdInputStream inputStream, Charset charset) throws UnsupportedEncodingException, InterruptedException {
+    public AsyncInputStreamHandler createAsyncStreamHandler(ProcessInputStream inputStream, Charset charset) throws UnsupportedEncodingException, InterruptedException {
         this.baoStd = new ByteArrayOutputStream();
         this.charset = charset;
         return new ReaderThread(this, charset, inputStream, baoStd);
+    }
+
+    @Override
+    public AsyncInputStreamHandler createAsyncStreamHandler(ProcessErrorStream errorStream, Charset charset) throws UnsupportedEncodingException, InterruptedException {
+        this.baoErr = new ByteArrayOutputStream();
+        this.charset = charset;
+        return new ReaderThread(this, charset, errorStream, baoErr);
     }
 
     /**
