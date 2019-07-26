@@ -31,118 +31,29 @@
  *     If the AGPL does not fit your needs, please contact us. We'll find a solution.
  * ====================================================================================================================================================
  * ==================================================================================================================================================== */
-package org.appwork.utils.processes.command;
+package org.appwork.utils.processes.test;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.ArrayList;
+
+import org.appwork.utils.processes.ProcessBuilderFactory;
+import org.appwork.utils.processes.ProcessOutput;
 
 /**
  * @author daniel
  * @date Jul 26, 2019
  *
  */
-public class ProcessInputStream extends InputStream {
+public class ProcessBuilderFactoryTest {
 
-    protected final Process process;
-
-    public Process getProcess() {
-        return process;
+    public static void main(String[] args) throws IOException, InterruptedException {
+        ArrayList<String> l = new ArrayList<String>();
+        l.add("du");
+        l.add("-h");
+        ProcessBuilder pb = ProcessBuilderFactory.create(l);
+        ProcessOutput result = ProcessBuilderFactory.runCommand(pb);
+        System.out.println("exitCode:" + result.getExitCode());
+        System.out.println("stdout:" + result.getStdOutString());
+        System.out.println("stderr:" + result.getErrOutString());
     }
-
-    protected volatile boolean  processAlive = true;
-    protected final InputStream is;
-
-    public ProcessInputStream(final Process process) {
-        this.process = process;
-        this.is = process.getErrorStream();
-        new Thread("ProcessInputStreamWaitFor:" + process) {
-            {
-                setDaemon(true);
-            }
-
-            public void run() {
-                try {
-                    ProcessInputStream.this.process.waitFor();
-                    processAlive = false;
-                } catch (InterruptedException e) {
-                }
-
-            };
-        }.start();
-    }
-
-    @Override
-    public int read() throws IOException {
-        final byte[] ret = new byte[1];
-        while (true) {
-            final int read = read(ret, 0, 1);
-            if (read == -1) {
-                return -1;
-            } else if (read == 1) {
-                return ret[0] & 255;
-            } else if (read == 0) {
-                try {
-                    Thread.sleep(10);
-                } catch (InterruptedException e) {
-                    throw new IOException(e);
-                }
-            }
-        }
-    }
-
-    @Override
-    public int available() throws IOException {
-        return is.available();
-    }
-
-    protected final AtomicBoolean closedFlag = new AtomicBoolean(false);
-
-    @Override
-    public void close() throws IOException {
-        if (closedFlag.compareAndSet(false, true)) {
-            final Thread thread = new Thread("ProcessInputStreamAsyncClose") {
-                {
-                    setDaemon(true);
-                }
-
-                @Override
-                public void run() {
-                    try {
-                        is.close();
-                    } catch (IOException ignore) {
-                    }
-                }
-            };
-            thread.start();
-            try {
-                thread.join(1000);
-            } catch (InterruptedException ignore) {
-            }
-        }
-    }
-
-    @Override
-    public int read(byte[] b, int off, int len) throws IOException {
-        final int next;
-        try {
-            next = available();
-        } catch (final IOException e) {
-            if (processAlive) {
-                throw e;
-            } else {
-                return -1;
-            }
-        }
-        if (next <= 0) {
-            if (processAlive) {
-                return 0;
-            } else {
-                return -1;
-            }
-        } else {
-            return is.read(b, off, Math.min(next, len));
-        }
-    }
-
 }

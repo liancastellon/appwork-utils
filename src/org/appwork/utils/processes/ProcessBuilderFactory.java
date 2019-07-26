@@ -40,12 +40,14 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.appwork.loggingv3.LogV3;
 import org.appwork.utils.Regex;
 import org.appwork.utils.StringUtils;
 import org.appwork.utils.os.CrossSystem;
+import org.appwork.utils.processes.command.ProcessErrorStream;
+import org.appwork.utils.processes.command.ProcessInputStream;
 
 public class ProcessBuilderFactory {
     /**
@@ -53,129 +55,120 @@ public class ProcessBuilderFactory {
      * @date 17.10.2018
      *
      */
-    public static class ProcessStreamReader extends Thread {
-        /**
-         *
-         */
-        private final AtomicReference<IOException> exception;
-        /**
-         *
-         */
-        private final Process                      process;
-        /**
-         *
-         */
-        private InputStream                        input;
-        private OutputStream                       output;
-        private volatile boolean                   processIsDead;
+    protected static class ProcessStreamReader extends Thread {
 
-        /**
-         * @param name
-         * @param exception
-         * @param process
-         * @param input
-         * @param errorStream
-         */
-        public ProcessStreamReader(String name, AtomicReference<IOException> exception, Process process, final InputStream input, OutputStream output) {
+        private final Process       process;
+        private final InputStream   is;
+        private final OutputStream  os;
+        private final AtomicBoolean processExitedFlag  = new AtomicBoolean(false);
+        private volatile long       processReadCurrent = 0;
+
+        protected ProcessStreamReader(String name, Process process, final InputStream input, OutputStream output) {
             super(name);
-            this.exception = exception;
             this.process = process;
-            this.input = input;
-            this.output = output;
+            this.is = input;
+            this.os = output;
+            this.setDaemon(true);
         }
 
         @Override
         public void run() {
             try {
-                // System.out.println("Start Process-Reader-Error");
-                readStreamToOutputStream();
-            } catch (IOException e) {
-                if (!processIsDead()) {
-                    exception.compareAndSet(null, e);
-                    LogV3.logger(ProcessBuilderFactory.class).log(e);
+                final byte[] buf = new byte[8 * 1024];
+                while (true) {
+                    final int available;
+                    try {
+                        if ((available = is.available()) <= 0 && !processExitedFlag.get()) {
+                            synchronized (processExitedFlag) {
+                                processExitedFlag.wait(10);
+                            }
+                            continue;
+                        }
+                    } catch (IOException e) {
+                        if (!processExitedFlag.get()) {
+                            LogV3.logger(ProcessBuilderFactory.class).log(e);
+                        }
+                        break;
+                    } catch (InterruptedException e) {
+                        break;
+                    }
+                    try {
+                        final int read;
+                        if (available <= 0 && processExitedFlag.get()) {
+                            read = -1;
+                        } else {
+                            read = is.read(buf, 0, Math.min(buf.length, available));
+                        }
+                        if (read <= 0 && processExitedFlag.get()) {
+                            break;
+                        } else {
+                            processReadCurrent += read;
+                            os.write(buf, 0, read);
+                        }
+                    } catch (IOException e) {
+                        if (!processExitedFlag.get()) {
+                            LogV3.logger(ProcessBuilderFactory.class).log(e);
+                        }
+                        break;
+                    }
                 }
+            } finally {
                 try {
                     process.exitValue();
                 } catch (IllegalThreadStateException e2) {
-                    // System.out.println("Process still running. Killing it");
                     process.destroy();
                 }
-            } finally {
-                // System.out.println("Stop Process-Reader-Error");
             }
         }
 
-        /**
-         * @throws IOException
-         *
-         */
-        private void readStreamToOutputStream() throws IOException {
+        @Override
+        public void interrupt() {
             try {
-                final byte[] buffer = new byte[1024];
-                int len = 0;
-                boolean wait = false;
-                while (true) {
-                    if (processIsDead() && input.available() == 0) {
-                        return;
-                    }
-                    len = input.read(buffer);
-                    if (processIsDead() && len == 0) {
-                        // according to
-                        // https://stackoverflow.com/questions/2319395/what-0-returned-by-inputstream-read-means-how-to-handle-this, this
-                        // method MAY return 0 if nothing is read.
-                        // so this is a workaround for bad inputstream implementations that might result in endless blocking readers
-                        return;
-                    }
-                    if (len == -1) {
-                        break;
-                    } else if (len > 0) {
-                        wait = false;
-                        output.write(buffer, 0, len);
-                    } else {
-                        try {
-                            if (wait == false) {
-                                wait = true;
-                                // System.out.println("Reader Wait");
-                            }
-                            Thread.sleep(10);
-                        } catch (InterruptedException e) {
-                            throw new IOException(e);
-                        }
-                    }
-                }
-            } catch (final IOException e) {
-                throw e;
-            } finally {
                 try {
-                    input.close();
-                } catch (final Exception e) {
+                    is.close();
+                } catch (IOException ignore) {
+                }
+            } finally {
+                super.interrupt();
+            }
+        }
+
+        protected void notifyProcessExited() {
+            if (processExitedFlag.compareAndSet(false, true)) {
+                synchronized (processExitedFlag) {
+                    processExitedFlag.notifyAll();
                 }
             }
         }
 
-        /**
-         * @return
-         */
-        private boolean processIsDead() {
-            return processIsDead;
+        protected long getProcessRead() {
+            return processReadCurrent;
         }
 
         /**
          * @throws InterruptedException
+         * @throws IOException
          *
          */
-        public void onProcessDead() throws InterruptedException {
-            if (processIsDead) {
-                return;
-            }
-            processIsDead = true;
+        protected void waitFor() throws InterruptedException {
+            notifyProcessExited();
+            long processReadLast = getProcessRead();
+            long timeStamp = System.currentTimeMillis();
             try {
-                // wait until the buffer is empty and close the stream afterwards to cancel blocking readers
-                while (input.available() > 0) {
+                while (isAlive()) {
+                    final long now = getProcessRead();
+                    if (processReadLast == now) {
+                        if (System.currentTimeMillis() - timeStamp > 10000) {
+                            break;
+                        }
+                    } else {
+                        processReadLast = now;
+                        timeStamp = System.currentTimeMillis();
+                    }
                     Thread.sleep(50);
                 }
-                input.close();
-            } catch (IOException e) {
+            } finally {
+                interrupt();
             }
         }
     }
@@ -212,53 +205,35 @@ public class ProcessBuilderFactory {
     public static int runCommand(ProcessBuilder pb, final OutputStream errorStream, final OutputStream sdtStream, final ProcessHandler osHandler) throws IOException, InterruptedException {
         // System.out.println("Start Process " + pb.command());
         //
-        final Process process = pb.start();
         ProcessStreamReader stdReader = null;
         ProcessStreamReader errorReader = null;
+        final Process process = pb.start();
         try {
-            final AtomicReference<IOException> exception = new AtomicReference<IOException>();
             if (osHandler == null || !osHandler.setProcess(process)) {
                 process.getOutputStream().close();
             }
-            stdReader = new ProcessStreamReader("Process-Reader-Std", exception, process, process.getInputStream(), sdtStream);
-            errorReader = new ProcessStreamReader("Process-Reader-Error", exception, process, process.getErrorStream(), errorStream);
-            int returnCode = -1;
+            stdReader = new ProcessStreamReader("Process-Reader-Std:" + pb.command(), process, new ProcessInputStream(process), sdtStream);
+            errorReader = new ProcessStreamReader("Process-Reader-Error:" + pb.command(), process, new ProcessErrorStream(process), errorStream);
             if (CrossSystem.isWindows()) {
                 stdReader.setPriority(Thread.NORM_PRIORITY + 1);
                 errorReader.setPriority(Thread.NORM_PRIORITY + 1);
             }
-            stdReader.setDaemon(true);
-            errorReader.setDaemon(true);
             stdReader.start();
             errorReader.start();
             // System.out.println("Wait for Process");
-            returnCode = process.waitFor();
-            stdReader.onProcessDead();
-            errorReader.onProcessDead();
-            // System.out.println("Process returned: " + returnCode);
-            while (stdReader.isAlive()) {
-                // System.out.println("Wait for Process-Reader-Std");
-                stdReader.join(10000);
-            }
-            while (errorReader.isAlive()) {
-                // System.out.println("Wait fo Process-Reader-Error");
-                errorReader.join(10000);
-            }
+            final int returnCode = process.waitFor();
+            stdReader.waitFor();
+            errorReader.waitFor();
             return returnCode;
         } finally {
             try {
-                if (errorStream != null) {
-                    errorStream.close();
-                }
-            } catch (Throwable e) {
-                LogV3.logger(ProcessBuilderFactory.class).exception("Failed to close the errorStream ", e);
+                errorStream.close();
+            } catch (Throwable ignore) {
             }
             try {
-                if (sdtStream != null) {
-                    sdtStream.close();
-                }
-            } catch (Throwable e) {
-                LogV3.logger(ProcessBuilderFactory.class).exception("Failed to close the sdtStream ", e);
+                sdtStream.close();
+            } catch (Throwable ignore) {
+
             }
             try {
                 process.destroy();
@@ -266,13 +241,13 @@ public class ProcessBuilderFactory {
             }
             // make sure the readers end, even in case of an exception
             if (errorReader.isAlive()) {
+                errorReader.notifyProcessExited();
                 errorReader.interrupt();
             }
             if (stdReader.isAlive()) {
+                stdReader.notifyProcessExited();
                 stdReader.interrupt();
             }
-            stdReader.onProcessDead();
-            errorReader.onProcessDead();
         }
     }
 

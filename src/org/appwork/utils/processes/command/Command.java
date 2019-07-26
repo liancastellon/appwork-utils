@@ -91,16 +91,17 @@ public class Command {
         return this;
     }
 
-    private List<AsyncInputStreamHandler> asyncTasks = new ArrayList<AsyncInputStreamHandler>();
-    private Charset                       charset;
+    protected final List<AsyncInputStreamHandler> asyncTasks = new ArrayList<AsyncInputStreamHandler>();
+    protected Charset                             charset;
 
     public Command setCharset(Charset charset) {
         checkRunning();
         if (charset == null) {
             throw new IllegalArgumentException("charset is null!");
+        } else {
+            this.charset = charset;
+            return this;
         }
-        this.charset = charset;
-        return this;
     }
 
     /**
@@ -116,8 +117,8 @@ public class Command {
         }
         final OutputHandler lh = lineHandler;
         if (lh != null) {
-            asyncTasks.add(lh.createAsyncStreamHandler(new CommandStdInputStream(new ProcessInputStream(process, process.getInputStream())), getCharset()));
-            asyncTasks.add(lh.createAsyncStreamHandler(new CommandErrInputStream(new ProcessInputStream(process, process.getErrorStream())), getCharset()));
+            asyncTasks.add(lh.createAsyncStreamHandler(new ProcessInputStream(process), getCharset()));
+            asyncTasks.add(lh.createAsyncStreamHandler(new ProcessErrorStream(process), getCharset()));
         }
         for (final AsyncInputStreamHandler task : asyncTasks) {
             task.start();

@@ -56,6 +56,7 @@ public class LineReadingTest {
             Command command = new Command("cat", "/home/daniel/workspaceBuild/jdlog_7524186935451.txt", LineReadingTestProcess.class.getName());
             final AtomicInteger lineCounter = new AtomicInteger(0);
             command.setOutputHandler(new AbstractLineHandler() {
+
                 @Override
                 public void handleLine(String line, Object caller) {
                     lineCounter.incrementAndGet();

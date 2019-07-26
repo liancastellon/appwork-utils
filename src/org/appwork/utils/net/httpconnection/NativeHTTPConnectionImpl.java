@@ -96,6 +96,9 @@ public class NativeHTTPConnectionImpl implements HTTPConnection {
     private boolean                                     legacyConnectFlag    = true;
     private final static WeakHashMap<Thread, HTTPProxy> availableProxies     = new WeakHashMap<Thread, HTTPProxy>();
     static {
+        // JDK1.8_111, java disabled basic auth
+        // https://www.oracle.com/technetwork/java/javase/8u111-relnotes-3124969.html
+        // jdk.http.auth.tunneling.disabledSchemes="" and jdk.http.auth.proxying.disabledSchemes=""
         try {
             Authenticator.setDefault(new Authenticator() {
                 @Override

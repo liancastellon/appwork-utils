@@ -49,9 +49,9 @@ public interface OutputHandler {
      * @throws InterruptedException
      * @throws UnsupportedEncodingException
      */
-    AsyncInputStreamHandler createAsyncStreamHandler(CommandErrInputStream inputStream, Charset charset) throws UnsupportedEncodingException, InterruptedException;
+    AsyncInputStreamHandler createAsyncStreamHandler(ProcessErrorStream errorStream, Charset charset) throws UnsupportedEncodingException, InterruptedException;
 
-    AsyncInputStreamHandler createAsyncStreamHandler(CommandStdInputStream inputStream, Charset charset) throws UnsupportedEncodingException, InterruptedException;
+    AsyncInputStreamHandler createAsyncStreamHandler(ProcessInputStream inputStream, Charset charset) throws UnsupportedEncodingException, InterruptedException;
 
     /**
      * @param exitCode
