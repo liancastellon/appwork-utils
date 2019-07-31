@@ -55,7 +55,7 @@ public class ProcessErrorStream extends InputStream {
 
     public ProcessErrorStream(final Process process) {
         this.process = process;
-        this.is = process.getInputStream();
+        this.is = process.getErrorStream();
         new Thread("ProcessErrorStreamWaitFor:" + process) {
             {
                 setDaemon(true);

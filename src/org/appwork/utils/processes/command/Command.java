@@ -203,4 +203,22 @@ public class Command {
     public void destroy() {
         process.destroy();
     }
+
+    /**
+     * @return true if the process is alive. If this method returns false, this does not mean, that stdout/err are read completly. You
+     *         should call {@link #waitFor()} to wait for streams and ensure that they get closed
+     */
+    public boolean isAlive() {
+        Process p = process;
+        // WARNING: Process.isAlive is 1.8+
+        if (p == null) {
+            return false;
+        }
+        try {
+            p.exitValue();
+            return false;
+        } catch (IllegalThreadStateException e) {
+            return true;
+        }
+    }
 }
