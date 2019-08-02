@@ -436,6 +436,7 @@ public class DesktopSupportWindows extends DesktopSupportJavaDesktop {
             for (String line : Regex.getLines(str)) {
                 line = line.trim();
                 String pid = new Regex(line, "^(?:TCP|UDP)\\s+" + Pattern.quote(((InetSocketAddress) adr).getAddress().getHostAddress()) + "\\:" + ((InetSocketAddress) adr).getPort() + "\\s+.*?(\\d+)$").getMatch(0);
+                LogV3.fine("Get PID By socket(netstat): " + adr + " -> " + pid);
                 if (pid != null) {
                     return Integer.parseInt(pid);
                 }
@@ -445,6 +446,7 @@ public class DesktopSupportWindows extends DesktopSupportJavaDesktop {
         } catch (Throwable e) {
             throw new WTFException(e);
         }
+        LogV3.fine("Get PID By socket(netstat): " + adr + " -> NONE");
         return -1;
     }
 
