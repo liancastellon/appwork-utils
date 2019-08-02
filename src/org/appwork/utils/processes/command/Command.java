@@ -137,6 +137,10 @@ public class Command {
      *
      */
     public int waitFor() throws InterruptedException, IOException {
+        final Process process = getProcess();
+        if (process == null) {
+            throw new IllegalStateException("Process not yet started!");
+        }
         Integer exitCode = null;
         try {
             try {
@@ -173,11 +177,15 @@ public class Command {
         return this;
     }
 
+    public Process getProcess() {
+        return process;
+    }
+
     /**
      *
      */
     protected void checkRunning() {
-        if (process != null) {
+        if (getProcess() != null) {
             throw new IllegalStateException("Process already running. You have to do this  BEFORE calling #start()");
         }
     }
@@ -191,17 +199,21 @@ public class Command {
         if (key == null || value == null) {
             LogV3.warning(key + "=" + value + " NullPointer Protection!");
             return this;
+        } else {
+            checkRunning();
+            builder.environment().put(key, value);
+            return this;
         }
-        checkRunning();
-        builder.environment().put(key, value);
-        return this;
     }
 
     /**
      *
      */
     public void destroy() {
-        process.destroy();
+        final Process process = getProcess();
+        if (process != null) {
+            process.destroy();
+        }
     }
 
     /**
@@ -209,16 +221,17 @@ public class Command {
      *         should call {@link #waitFor()} to wait for streams and ensure that they get closed
      */
     public boolean isAlive() {
-        Process p = process;
+        final Process p = getProcess();
         // WARNING: Process.isAlive is 1.8+
         if (p == null) {
             return false;
-        }
-        try {
-            p.exitValue();
-            return false;
-        } catch (IllegalThreadStateException e) {
-            return true;
+        } else {
+            try {
+                p.exitValue();
+                return false;
+            } catch (IllegalThreadStateException e) {
+                return true;
+            }
         }
     }
 }

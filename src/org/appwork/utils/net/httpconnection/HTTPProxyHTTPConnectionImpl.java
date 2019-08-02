@@ -64,6 +64,11 @@ public class HTTPProxyHTTPConnectionImpl extends HTTPConnectionImpl {
         return p != null && (HTTPProxy.TYPE.HTTP.equals(p.getType()) || HTTPProxy.TYPE.HTTPS.equals(p.getType()));
     }
 
+    protected boolean appendPortToHostHeaderonCONNECT(HTTPProxy p) {
+        // some proxy implementation might expect 'HOST: host:port' header
+        return false;
+    }
+
     /*
      * SSL over HTTP Proxy, see http://muffin.doit.org/docs/rfc/tunneling_ssl.html
      */
@@ -81,7 +86,7 @@ public class HTTPProxyHTTPConnectionImpl extends HTTPConnectionImpl {
                 setHostname(resolveHostname(httpURL.getHost()));
             }
             try {
-                if (!isProxySupported(proxy)) {
+                if (!isProxySupported(getProxy())) {
                     throw new IOException("HTTPProxyHTTPConnection: proxy unsupported");
                 }
                 if (this.proxy.getPass() != null && this.proxy.getPass().length() > 0 || this.proxy.getUser() != null && this.proxy.getUser().length() > 0) {
@@ -138,17 +143,28 @@ public class HTTPProxyHTTPConnectionImpl extends HTTPConnectionImpl {
                     /* build CONNECT request */
                     this.proxyRequest = new StringBuilder();
                     this.proxyRequest.append("CONNECT ");
-                    this.proxyRequest.append(getHostname() + ":" + (this.httpURL.getPort() != -1 ? this.httpURL.getPort() : this.httpURL.getDefaultPort()));
+                    final int hostPort = this.httpURL.getPort() != -1 ? this.httpURL.getPort() : this.httpURL.getDefaultPort();
+                    final boolean addHostPort = appendPortToHostHeaderonCONNECT(getProxy());
+                    this.proxyRequest.append(getHostname() + ":" + hostPort);
                     this.proxyRequest.append(" HTTP/1.1\r\n");
                     if (this.requestProperties.get("User-Agent") != null) {
                         this.proxyRequest.append("User-Agent: " + this.requestProperties.get("User-Agent") + "\r\n");
                     }
                     if (this.requestProperties.get("Host") != null) {
                         /* use existing host header */
-                        this.proxyRequest.append("Host: " + this.requestProperties.get("Host") + "\r\n");
+                        final String host = this.requestProperties.get("Host");
+                        if (!host.contains(":") && addHostPort) {
+                            this.proxyRequest.append("Host: " + host + ":" + hostPort + "\r\n");
+                        } else {
+                            this.proxyRequest.append("Host: " + host + "\r\n");
+                        }
                     } else {
                         /* add host from url as fallback */
-                        this.proxyRequest.append("Host: " + this.httpURL.getHost() + "\r\n");
+                        if (addHostPort) {
+                            this.proxyRequest.append("Host: " + this.httpURL.getHost() + ":" + hostPort + "\r\n");
+                        } else {
+                            this.proxyRequest.append("Host: " + this.httpURL.getHost() + "\r\n");
+                        }
                     }
                     if (this.requestProperties.get("Proxy-Authorization") != null) {
                         this.proxyRequest.append("Proxy-Authorization: " + this.requestProperties.get("Proxy-Authorization") + "\r\n");

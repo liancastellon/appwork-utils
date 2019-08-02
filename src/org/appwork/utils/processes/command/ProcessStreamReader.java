@@ -68,16 +68,44 @@ public class ProcessStreamReader extends Thread implements AsyncInputStreamHandl
     protected final AtomicBoolean processExitedFlag  = new AtomicBoolean(false);
     protected volatile long       processReadCurrent = 0;
 
-    public ProcessStreamReader(String name, Process process, final InputStream input, OutputStream output) {
+    public ProcessStreamReader(String name, final Process process, final InputStream input, OutputStream output) {
         super(name);
         this.process = process;
         this.is = input;
         this.os = output;
         this.setDaemon(true);
+        new Thread("ProcessStreamReaderWaitFor:" + process) {
+            {
+                setDaemon(true);
+            }
+
+            public void run() {
+                try {
+                    final int exitCode = getProcess().waitFor();
+                    onExit(exitCode);
+                } catch (InterruptedException e) {
+                }
+            };
+
+        }.start();
     }
 
     protected int getReadBufferSize() {
         return 8 * 1024;
+    }
+
+    protected boolean isProcessAlive() {
+        if (processExitedFlag.get()) {
+            return false;
+        } else {
+            try {
+                getProcess().exitValue();
+                notifyProcessExited();
+                return false;
+            } catch (IllegalThreadStateException e) {
+                return true;
+            }
+        }
     }
 
     @Override
@@ -95,10 +123,10 @@ public class ProcessStreamReader extends Thread implements AsyncInputStreamHandl
                         continue;
                     }
                 } catch (IOException e) {
-                    if (!processExitedFlag.get()) {
+                    if (isProcessAlive()) {
                         LogV3.logger(ProcessBuilderFactory.class).log(e);
+                        thrown = e;
                     }
-                    thrown = e;
                     break;
                 } catch (InterruptedException e) {
                     thrown = e;

@@ -36,15 +36,17 @@ package org.appwork.utils.net.httpconnection;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.net.Authenticator;
 import java.net.HttpURLConnection;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.PasswordAuthentication;
 import java.net.Proxy;
 import java.net.SocketAddress;
 import java.net.URL;
-import java.net.UnknownHostException;
+import java.net.URLConnection;
+import java.net.URLStreamHandler;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -57,6 +59,8 @@ import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLSession;
 
 import org.appwork.net.protocol.http.HTTPConstants;
+import org.appwork.utils.Exceptions;
+import org.appwork.utils.JVMVersion;
 import org.appwork.utils.StringUtils;
 import org.appwork.utils.net.CountingInputStream;
 import org.appwork.utils.net.CountingOutputStream;
@@ -89,7 +93,7 @@ public class NativeHTTPConnectionImpl implements HTTPConnection {
     protected long                                      requestTime          = -1;
     protected long[]                                    ranges;
     protected boolean                                   contentDecoded       = false;
-    private Proxy                                       nativeProxy;
+    protected Proxy                                     nativeProxy;
     private boolean                                     connected            = false;
     private boolean                                     wasConnected         = false;
     private boolean                                     sslTrustALL          = false;
@@ -128,15 +132,80 @@ public class NativeHTTPConnectionImpl implements HTTPConnection {
         }
     }
 
+    protected boolean appendPortToHostHeaderonCONNECT(HTTPProxy p) {
+        // some proxy implementation might expect 'HOST: host:port' header
+        return false;
+    }
+
     public NativeHTTPConnectionImpl(final URL url) {
-        this.httpURL = url;
+        this.httpURL = getProxyConnectHostHeaderWorkaroundURL(url, null);
         this.proxy = null;
         this.requestProperties = new HTTPHeaderMap<String>();
         this.headers = new HTTPHeaderMap<List<String>>();
     }
 
+    /**
+     * workaround to always add port to host header as there are known proxy implementations that expect it
+     *
+     * @param url
+     * @param p
+     * @return
+     */
+    protected URL getProxyConnectHostHeaderWorkaroundURL(final URL url, final HTTPProxy p) {
+        if (appendPortToHostHeaderonCONNECT(p) && JVMVersion.get() <= JVMVersion.JAVA18 && p != null && HTTPProxy.TYPE.HTTP.equals(p.getType()) && StringUtils.equalsIgnoreCase(url.getProtocol(), "https")) {
+            try {
+                final int hostPort = url.getPort() != -1 ? url.getPort() : url.getDefaultPort();
+                final Field portField = url.getClass().getDeclaredField("port");
+                portField.setAccessible(true);
+                final Field handlerField = url.getClass().getDeclaredField("handler");
+                handlerField.setAccessible(true);
+                final URLStreamHandler handler = (URLStreamHandler) handlerField.get(url);
+                final URL ret = new URL(null, url.toExternalForm(), new URLStreamHandler() {
+
+                    @Override
+                    protected int getDefaultPort() {
+                        if (Exceptions.getStackTrace(new Exception()).contains("sendCONNECT")) {
+                            // dirty hack to enforce adding port to host header
+                            final int ret = hostPort + 1;
+                            return ret;
+                        } else {
+                            return url.getDefaultPort();
+                        }
+                    }
+
+                    @Override
+                    protected URLConnection openConnection(URL u) throws IOException {
+                        try {
+                            final Method openConnection = handler.getClass().getDeclaredMethod("openConnection", new Class[] { URL.class });
+                            openConnection.setAccessible(true);
+                            return (URLConnection) openConnection.invoke(handler, u);
+                        } catch (Exception e) {
+                            throw new IOException(e);
+                        }
+                    }
+
+                    @Override
+                    protected URLConnection openConnection(URL u, Proxy p) throws IOException {
+                        try {
+                            final Method openConnection = handler.getClass().getDeclaredMethod("openConnection", new Class[] { URL.class, Proxy.class });
+                            openConnection.setAccessible(true);
+                            return (URLConnection) openConnection.invoke(handler, u, p);
+                        } catch (Exception e) {
+                            throw new IOException(e);
+                        }
+                    }
+                });
+                portField.set(ret, hostPort);
+                return ret;
+            } catch (final Throwable e) {
+                e.printStackTrace();
+            }
+        }
+        return url;
+    }
+
     public NativeHTTPConnectionImpl(final URL url, final HTTPProxy p) {
-        this.httpURL = url;
+        this.httpURL = getProxyConnectHostHeaderWorkaroundURL(url, p);
         this.proxy = p;
         this.requestProperties = new HTTPHeaderMap<String>();
         this.headers = new HTTPHeaderMap<List<String>>();
@@ -604,24 +673,6 @@ public class NativeHTTPConnectionImpl implements HTTPConnection {
 
     protected boolean isRequiresOutputStream() {
         return httpMethod.requiresOutputStream;
-    }
-
-    public InetAddress[] resolvHostIP(final String host) throws IOException {
-        InetAddress hosts[] = null;
-        for (int resolvTry = 0; resolvTry < 2; resolvTry++) {
-            try {
-                /* resolv all possible ip's */
-                hosts = InetAddress.getAllByName(host);
-                return hosts;
-            } catch (final UnknownHostException e) {
-                try {
-                    Thread.sleep(500);
-                } catch (final InterruptedException e1) {
-                    throw new UnknownHostException("Could not resolv " + host);
-                }
-            }
-        }
-        throw new UnknownHostException("Could not resolv " + host);
     }
 
     @Override
