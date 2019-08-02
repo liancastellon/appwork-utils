@@ -34,7 +34,9 @@
 package org.appwork.utils.processes.test;
 
 import java.io.IOException;
+import java.util.Arrays;
 
+import org.appwork.exceptions.WTFException;
 import org.appwork.utils.processes.ProcessOutput;
 import org.appwork.utils.processes.command.Command;
 import org.appwork.utils.processes.command.ProcessOutputHandler;
@@ -46,12 +48,37 @@ import org.appwork.utils.processes.command.ProcessOutputHandler;
  */
 public class ProcessOutputTest {
     public static void main(String[] args) throws IOException, InterruptedException, ClassNotFoundException {
-        Command command = new Command("du", "-h");
+        final String[] cmd = new String[] { "du", "-h" };
+        Command command = new Command(cmd);
         ProcessOutputHandler po;
         command.setOutputHandler(po = new ProcessOutputHandler());
         command.start(true);
-        command.waitFor();
-        ProcessOutput out = po.getResult();
-        System.out.println(out);
+        System.out.println("exitCode(commandWaitFor):" + command.waitFor());
+        ProcessOutput out1 = po.getResult();
+        String result1 = out1.toString();
+        System.out.println(result1);
+
+        command = new Command(cmd);
+        command.setOutputHandler(po = new ProcessOutputHandler());
+        command.start(true);
+        if (false) {
+            System.out.println("exitCode(commandWaitFor):" + command.waitFor());
+        } else {
+            System.out.println("exitCode(processWaitFor):" + command.getProcess().waitFor());
+            Thread.sleep(1000);
+        }
+        ProcessOutput out2 = po.getResult();
+        String result2 = out2.toString();
+        System.out.println(result2);
+        final boolean stdOutSame = Arrays.equals(out1.getStdOutData().toByteArray(), out2.getStdOutData().toByteArray());
+        final boolean stdErrSame = Arrays.equals(out1.getErrOutData().toByteArray(), out2.getErrOutData().toByteArray());
+        if (!stdOutSame) {
+            throw new WTFException("stdout different!");
+        } else if (!stdErrSame) {
+            throw new WTFException("sterr different!");
+        } else {
+            System.out.println("yeah");
+        }
+
     }
 }
