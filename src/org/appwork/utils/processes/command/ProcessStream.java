@@ -49,8 +49,8 @@ public abstract class ProcessStream extends InputStream {
         return process;
     }
 
-    protected volatile boolean  processAlive = true;
-    protected final InputStream is;
+    protected final AtomicBoolean processAliveFlag = new AtomicBoolean(true);
+    protected final InputStream   is;
 
     protected ProcessStream(final Process process, InputStream is) {
         this.process = process;
@@ -62,13 +62,20 @@ public abstract class ProcessStream extends InputStream {
 
             public void run() {
                 try {
-                    ProcessStream.this.process.waitFor();
-                    processAlive = false;
+                    notifyProcessTerminated(getProcess().waitFor());
                 } catch (InterruptedException e) {
                 }
 
             };
         }.start();
+    }
+
+    protected void notifyProcessTerminated(int exitCode) {
+        if (processAliveFlag.compareAndSet(true, false)) {
+            synchronized (processAliveFlag) {
+                processAliveFlag.notifyAll();
+            }
+        }
     }
 
     @Override
@@ -82,7 +89,11 @@ public abstract class ProcessStream extends InputStream {
                 return ret[0] & 255;
             } else if (read == 0) {
                 try {
-                    Thread.sleep(10);
+                    synchronized (processAliveFlag) {
+                        if (processAliveFlag.get()) {
+                            processAliveFlag.wait(10);
+                        }
+                    }
                 } catch (InterruptedException e) {
                     throw new IOException(e);
                 }
@@ -91,12 +102,11 @@ public abstract class ProcessStream extends InputStream {
     }
 
     public boolean isProcessAlive() {
-        if (!processAlive) {
+        if (!processAliveFlag.get()) {
             return false;
         } else {
             try {
-                getProcess().exitValue();
-                processAlive = false;
+                notifyProcessTerminated(getProcess().exitValue());
                 return false;
             } catch (IllegalThreadStateException e) {
                 return true;
