@@ -504,17 +504,11 @@ public class ImageProvider {
         if (!input.canRead()) {
             throw new IIOException("Can't read input file!");
         }
-        FileInputStream is = null;
+        final FileInputStream is = new FileInputStream(input);
         try {
-            is = new FileInputStream(input);
             return ImageIO.read(is);
         } finally {
-            try {
-                if (is != null) {
-                    is.close();
-                }
-            } catch (final Throwable e) {
-            }
+            is.close();
         }
     }
 
