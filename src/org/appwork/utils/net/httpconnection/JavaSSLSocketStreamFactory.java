@@ -110,21 +110,14 @@ public class JavaSSLSocketStreamFactory implements SSLSocketStreamFactory {
 
             private Socket disableCipherSuit(final Socket socket) {
                 if (socket != null && socket instanceof SSLSocket) {
-                    // final long javaVersion = Application.getJavaVersion();
-                    // https://stackoverflow.com/questions/25992131/slow-aes-gcm-encryption-and-decryption-with-java-8u20/27028067#27028067
-                    final boolean gcmWorkaround = true;
-                    if (gcmWorkaround || cipherBlacklist != null) {
+                    if (cipherBlacklist != null) {
                         final SSLSocket sslSocket = (SSLSocket) socket;
                         final ArrayList<String> cipherSuits = new ArrayList<String>(Arrays.asList(sslSocket.getEnabledCipherSuites()));
                         final Iterator<String> it = cipherSuits.iterator();
                         boolean updateCipherSuites = false;
                         cipher: while (it.hasNext()) {
                             final String next = it.next();
-                            if (gcmWorkaround && StringUtils.containsIgnoreCase(next, "GCM")) {
-                                it.remove();
-                                updateCipherSuites = true;
-                                continue cipher;
-                            } else if (cipherBlacklist != null) {
+                            if (cipherBlacklist != null) {
                                 for (final String cipherBlacklistEntry : cipherBlacklist) {
                                     if (StringUtils.containsIgnoreCase(next, cipherBlacklistEntry)) {
                                         it.remove();
