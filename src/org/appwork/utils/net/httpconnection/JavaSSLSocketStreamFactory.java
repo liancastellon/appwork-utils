@@ -253,7 +253,7 @@ public class JavaSSLSocketStreamFactory implements SSLSocketStreamFactory {
 
             @Override
             public String getCipherSuite() {
-                return sslSocket.getSession().getCipherSuite();
+                return "JVM:" + sslSocket.getSession().getCipherSuite();
             }
         };
     }
