@@ -49,6 +49,7 @@ import org.appwork.utils.net.httpconnection.ProxyAuthException;
 import org.appwork.utils.net.httpconnection.ProxyConnectException;
 import org.appwork.utils.net.httpconnection.ProxyEndpointConnectException;
 import org.appwork.utils.net.httpconnection.SSLSocketStreamFactory;
+import org.appwork.utils.net.httpconnection.SSLSocketStreamOptions;
 import org.appwork.utils.net.httpconnection.SocketStreamInterface;
 
 /**
@@ -98,7 +99,7 @@ public class HTTPProxySocketConnection extends SocketConnection {
         if (HTTPProxy.TYPE.HTTPS.equals(proxy.getType())) {
             try {
                 final SSLSocketStreamFactory factory = getSSLSocketStreamFactory();
-                proxySocket = factory.create(proxySocket, "", proxy.getPort(), true, isSSLTrustALL(), null);
+                proxySocket = factory.create(proxySocket, "", proxy.getPort(), true, new SSLSocketStreamOptions(isSSLTrustALL()));
             } catch (final IOException e) {
                 throw new ProxyConnectException(e, proxy);
             }

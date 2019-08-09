@@ -48,6 +48,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 import javax.net.ssl.SNIServerName;
 import javax.net.ssl.SSLHandshakeException;
@@ -76,7 +77,7 @@ public class JavaSSLSocketStreamFactory implements SSLSocketStreamFactory {
         return getSSLSocketFactory(useSSLTrustAll, null);
     }
 
-    public static SSLSocketFactory getSSLSocketFactory(final boolean useSSLTrustAll, final String[] cipherBlacklist) throws IOException {
+    public static SSLSocketFactory getSSLSocketFactory(final boolean useSSLTrustAll, final Set<String> disabledCipherSuites) throws IOException {
         final SSLSocketFactory factory;
         if (useSSLTrustAll) {
             factory = TrustALLSSLFactory.getSSLFactoryTrustALL();
@@ -110,15 +111,15 @@ public class JavaSSLSocketStreamFactory implements SSLSocketStreamFactory {
 
             private Socket disableCipherSuit(final Socket socket) {
                 if (socket != null && socket instanceof SSLSocket) {
-                    if (cipherBlacklist != null) {
+                    if (disabledCipherSuites != null) {
                         final SSLSocket sslSocket = (SSLSocket) socket;
                         final ArrayList<String> cipherSuits = new ArrayList<String>(Arrays.asList(sslSocket.getEnabledCipherSuites()));
                         final Iterator<String> it = cipherSuits.iterator();
                         boolean updateCipherSuites = false;
                         cipher: while (it.hasNext()) {
                             final String next = it.next();
-                            if (cipherBlacklist != null) {
-                                for (final String cipherBlacklistEntry : cipherBlacklist) {
+                            if (disabledCipherSuites != null) {
+                                for (final String cipherBlacklistEntry : disabledCipherSuites) {
                                     if (StringUtils.containsIgnoreCase(next, cipherBlacklistEntry)) {
                                         it.remove();
                                         updateCipherSuites = true;
@@ -219,9 +220,12 @@ public class JavaSSLSocketStreamFactory implements SSLSocketStreamFactory {
     }
 
     @Override
-    public SSLSocketStreamInterface create(final SocketStreamInterface socketStream, final String host, final int port, final boolean autoClose, final boolean trustAll, final String[] cipherBlacklist) throws IOException {
-        final SSLSocket sslSocket = (SSLSocket) getSSLSocketFactory(trustAll, cipherBlacklist).createSocket(socketStream.getSocket(), host, port, autoClose);
-        if (StringUtils.isEmpty(host)) {
+    public SSLSocketStreamInterface create(final SocketStreamInterface socketStream, final String host, final int port, final boolean autoClose, SSLSocketStreamOptions options) throws IOException {
+        final boolean isTrustAll = (options == null || options.isTrustAll());
+        final Set<String> disabledCipherSuites = options != null ? options.getDisabledCipherSuites() : null;
+        final boolean sniEnabled = !StringUtils.isEmpty(host) && (options == null || options.isSNIEnabled());
+        final SSLSocket sslSocket = (SSLSocket) getSSLSocketFactory(isTrustAll, disabledCipherSuites).createSocket(socketStream.getSocket(), sniEnabled ? host : "", port, autoClose);
+        if (!sniEnabled) {
             final SSLParameters sslParams = sslSocket.getSSLParameters();
             sslParams.setServerNames(new ArrayList<SNIServerName>(0));
             sslSocket.setSSLParameters(sslParams);
