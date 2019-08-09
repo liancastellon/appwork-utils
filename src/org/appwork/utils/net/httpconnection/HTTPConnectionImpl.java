@@ -460,12 +460,7 @@ public class HTTPConnectionImpl implements HTTPConnection {
 
     protected KeepAliveSocketStream getKeepAliveSocket(final boolean dnsLookup) throws IOException {
         final InetAddress[] localIP = getNetworkInterfaceInetAdress(getProxy());
-        final int port;
-        if (this.httpURL.getPort() == -1) {
-            port = this.httpURL.getDefaultPort();
-        } else {
-            port = this.httpURL.getPort();
-        }
+        final int port = getPort(httpURL);
         final String host = getHostname();
         final boolean ssl = StringUtils.equalsIgnoreCase("https", this.httpURL.getProtocol());
         String domain = null;
@@ -759,9 +754,34 @@ public class HTTPConnectionImpl implements HTTPConnection {
         return remoteIPs;
     }
 
+    protected static HashMap<String, SSLSocketStreamOptions> SSL_SOCKETSTREAM_OPTIONS = new HashMap<String, SSLSocketStreamOptions>();
+
+    protected SSLSocketStreamOptions getSSLSocketStreamOptions() {
+        final boolean isSSLTrustAll = isSSLTrustALL();
+        final String id = getHostname() + ":" + getPort() + ":" + isSSLTrustAll;
+        synchronized (SSL_SOCKETSTREAM_OPTIONS) {
+            SSLSocketStreamOptions options = SSL_SOCKETSTREAM_OPTIONS.get(id);
+            if (options != null && options.isValid()) {
+                return options;
+            } else {
+                options = new SSLSocketStreamOptions(isSSLTrustAll);
+                SSL_SOCKETSTREAM_OPTIONS.put(id, options);
+                return options;
+            }
+        }
+    }
+
+    protected int getPort(URL url) {
+        final int port = url.getPort();
+        if (port == -1) {
+            return url.getDefaultPort();
+        } else {
+            return port;
+        }
+    }
+
     public void connect() throws IOException {
-        boolean sslSNIWorkAround = false;
-        String[] cipherBlackList = null;
+        SSLSocketStreamOptions sslSocketStreamOptions = null;
         connect: while (true) {
             if (this.isConnectionSocketValid()) {
                 return;/* oder fehler */
@@ -781,10 +801,7 @@ public class HTTPConnectionImpl implements HTTPConnection {
                 IOException ee = null;
                 for (final InetAddress host : getRemoteIPs()) {
                     this.resetConnection();
-                    int port = this.httpURL.getPort();
-                    if (port == -1) {
-                        port = this.httpURL.getDefaultPort();
-                    }
+                    final int port = getPort(httpURL);
                     long startTime = System.currentTimeMillis();
                     final HTTPProxy lProxy = getProxy();
                     InetAddress bindInetAddress = null;
@@ -864,13 +881,11 @@ public class HTTPConnectionImpl implements HTTPConnection {
                         }
                         if (this.httpURL.getProtocol().startsWith("https")) {
                             final SSLSocketStreamFactory factory = getSSLSocketStreamFactory();
-                            if (sslSNIWorkAround) {
-                                /* wrong configured SNI at serverSide */
-                                this.connectionSocket = factory.create(connectionSocket, "", port, true, isSSLTrustALL(), cipherBlackList);
-                            } else {
-                                final String hostName = getHostname();
-                                this.connectionSocket = factory.create(connectionSocket, hostName, port, true, isSSLTrustALL(), cipherBlackList);
+                            final String hostName = getHostname();
+                            if (sslSocketStreamOptions == null) {
+                                sslSocketStreamOptions = getSSLSocketStreamOptions();
                             }
+                            this.connectionSocket = factory.create(connectionSocket, hostName, port, true, sslSocketStreamOptions);
                         }
                         this.connectTime = System.currentTimeMillis() - startTime;
                         ee = null;
@@ -878,18 +893,14 @@ public class HTTPConnectionImpl implements HTTPConnection {
                     } catch (final IOException e) {
                         this.disconnect();
                         this.connectExceptions.add(connectedInetSocketAddress + "|" + e.getMessage());
-                        if (sslSNIWorkAround == false && (StringUtils.contains(e.getMessage(), "unrecognized_name"))) {
-                            sslSNIWorkAround = true;
+                        if (sslSocketStreamOptions != null && sslSocketStreamOptions.retry(e)) {
                             continue connect;
-                        }
-                        if (cipherBlackList == null && (StringUtils.contains(e.getMessage(), "Could not generate DH keypair"))) {
-                            cipherBlackList = new String[] { "_DHE", "_ECDHE" };
-                            continue connect;
-                        }
-                        if (bindInetAddress != null) {
-                            ee = new ProxyConnectException(e, lProxy);
                         } else {
-                            ee = e;
+                            if (bindInetAddress != null) {
+                                ee = new ProxyConnectException(e, lProxy);
+                            } else {
+                                ee = e;
+                            }
                         }
                     }
                 }
@@ -911,15 +922,11 @@ public class HTTPConnectionImpl implements HTTPConnection {
                 } finally {
                     this.disconnect();
                 }
-                if (sslSNIWorkAround == false && e.getMessage().contains("unrecognized_name")) {
-                    sslSNIWorkAround = true;
+                if (sslSocketStreamOptions != null && sslSocketStreamOptions.retry(e)) {
                     continue connect;
+                } else {
+                    throw e;
                 }
-                if (cipherBlackList == null && (StringUtils.contains(e.getMessage(), "Could not generate DH keypair"))) {
-                    cipherBlackList = new String[] { "_DHE", "_ECDHE" };
-                    continue connect;
-                }
-                throw e;
             }
         }
     }
@@ -1315,6 +1322,10 @@ public class HTTPConnectionImpl implements HTTPConnection {
         } else {
             return resolveHostname(httpURL.getHost());
         }
+    }
+
+    protected int getPort() {
+        return getPort(getURL());
     }
 
     protected String getRequestInfo() {

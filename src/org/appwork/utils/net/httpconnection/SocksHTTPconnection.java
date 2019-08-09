@@ -39,7 +39,6 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.URL;
 
-import org.appwork.utils.StringUtils;
 import org.appwork.utils.net.httpconnection.HTTPConnectionUtils.IPVERSION;
 import org.appwork.utils.net.socketconnection.SocketConnection;
 
@@ -73,8 +72,7 @@ public abstract class SocksHTTPconnection extends HTTPConnectionImpl {
         if (!isHostnameResolved()) {
             setHostname(resolveHostname(httpURL.getHost()));
         }
-        boolean sslSNIWorkAround = false;
-        String[] cipherBlackList = null;
+        SSLSocketStreamOptions sslSocketStreamOptions = null;
         final int port = getConnectEndpointPort();
         connect: while (true) {
             if (this.isConnectionSocketValid()) {
@@ -90,24 +88,20 @@ public abstract class SocksHTTPconnection extends HTTPConnectionImpl {
                     /* we need to lay ssl over normal socks5 connection */
                     try {
                         final SSLSocketStreamFactory factory = getSSLSocketStreamFactory();
-                        if (sslSNIWorkAround) {
-                            /* wrong configured SNI at serverSide */
-                            this.connectionSocket = factory.create(sockssocket, "", port, true, isSSLTrustALL(), cipherBlackList);
-                        } else {
-                            this.connectionSocket = factory.create(sockssocket, getHostname(), port, true, isSSLTrustALL(), cipherBlackList);
+                        final String hostName = getHostname();
+                        if (sslSocketStreamOptions == null) {
+                            sslSocketStreamOptions = getSSLSocketStreamOptions();
                         }
+                        this.connectionSocket = factory.create(sockssocket, hostName, port, true, sslSocketStreamOptions);
+
                     } catch (final IOException e) {
                         this.connectExceptions.add(this.sockssocket + "|" + e.getMessage());
                         this.disconnect();
-                        if (sslSNIWorkAround == false && e.getMessage().contains("unrecognized_name")) {
-                            sslSNIWorkAround = true;
+                        if (sslSocketStreamOptions != null && sslSocketStreamOptions.retry(e)) {
                             continue connect;
+                        } else {
+                            throw new ProxyConnectException(e, this.proxy);
                         }
-                        if (cipherBlackList == null && (StringUtils.contains(e.getMessage(), "Could not generate DH keypair"))) {
-                            cipherBlackList = new String[] { "_DHE", "_ECDHE" };
-                            continue connect;
-                        }
-                        throw new ProxyConnectException(e, this.proxy);
                     }
                 } else {
                     /* we can continue to use the socks connection */
@@ -125,15 +119,11 @@ public abstract class SocksHTTPconnection extends HTTPConnectionImpl {
                 } finally {
                     this.disconnect();
                 }
-                if (sslSNIWorkAround == false && e.getMessage().contains("unrecognized_name")) {
-                    sslSNIWorkAround = true;
+                if (sslSocketStreamOptions != null && sslSocketStreamOptions.retry(e)) {
                     continue connect;
+                } else {
+                    throw new ProxyConnectException(e, this.proxy);
                 }
-                if (cipherBlackList == null && (StringUtils.contains(e.getMessage(), "Could not generate DH keypair"))) {
-                    cipherBlackList = new String[] { "_DHE", "_ECDHE" };
-                    continue connect;
-                }
-                throw new ProxyConnectException(e, this.proxy);
             } catch (final IOException e) {
                 try {
                     this.connectExceptions.add("Socks:" + SocketConnection.getRootEndPointSocketAddress(sockssocket) + "|EndPoint:" + this.proxyInetSocketAddress + "|Exception:" + e.getMessage());

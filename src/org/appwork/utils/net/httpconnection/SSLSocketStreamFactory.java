@@ -40,5 +40,5 @@ import java.io.IOException;
  *
  */
 public interface SSLSocketStreamFactory {
-    public SSLSocketStreamInterface create(SocketStreamInterface socketStream, final String host, final int port, final boolean autoclose, final boolean trustAll, final String[] cipherBlacklist) throws IOException;
+    public SSLSocketStreamInterface create(SocketStreamInterface socketStream, final String host, final int port, final boolean autoclose, SSLSocketStreamOptions options) throws IOException;
 }
