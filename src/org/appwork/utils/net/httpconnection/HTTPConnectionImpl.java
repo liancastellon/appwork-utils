@@ -68,6 +68,7 @@ import org.appwork.loggingv3.LogV3;
 import org.appwork.net.protocol.http.HTTPConstants;
 import org.appwork.scheduler.DelayedRunnable;
 import org.appwork.utils.Application;
+import org.appwork.utils.Exceptions;
 import org.appwork.utils.KeyValueStringEntry;
 import org.appwork.utils.Regex;
 import org.appwork.utils.StringUtils;
@@ -138,13 +139,13 @@ public class HTTPConnectionImpl implements HTTPConnection {
     }
 
     protected String                      httpPath;
-    protected RequestMethod               httpMethod          = RequestMethod.GET;
-    protected HTTPHeaderMap<List<String>> headers             = null;
-    protected int                         httpResponseCode    = -1;
-    protected String                      httpResponseMessage = "";
-    protected volatile int                readTimeout         = 30000;
-    protected volatile int                connectTimeout      = 30000;
-    protected IPVERSION                   ipVersion           = null;
+    protected RequestMethod               httpMethod              = RequestMethod.GET;
+    protected HTTPHeaderMap<List<String>> headers                 = null;
+    protected int                         httpResponseCode        = -1;
+    protected String                      httpResponseMessage     = "";
+    protected volatile int                readTimeout             = 30000;
+    protected volatile int                requestedConnectTimeout = 30000;
+    protected IPVERSION                   ipVersion               = null;
 
     public IPVERSION getIPVersion() {
         return ipVersion;
@@ -159,7 +160,7 @@ public class HTTPConnectionImpl implements HTTPConnection {
     }
 
     public int getConnectTimeout() {
-        return this.connectTimeout;
+        return this.requestedConnectTimeout;
     }
 
     protected volatile long                      connectTime          = -1;
@@ -219,7 +220,7 @@ public class HTTPConnectionImpl implements HTTPConnection {
                         while (keepAliveIterator.hasNext()) {
                             final KeepAliveSocketStream socketStream = keepAliveIterator.next();
                             final Socket socket = socketStream.getSocket();
-                            if (socket.isClosed() || socketStream.getKeepAliveTimestamp() <= System.currentTimeMillis()) {
+                            if (socket.isClosed() || socketStream.isTimedOut()) {
                                 try {
                                     socket.close();
                                 } catch (final Throwable ignore) {
@@ -478,7 +479,7 @@ public class HTTPConnectionImpl implements HTTPConnection {
                 while (socketPoolIterator.hasNext()) {
                     final KeepAliveSocketStream socketStream = socketPoolIterator.next();
                     final Socket socket = socketStream.getSocket();
-                    if (socket.isClosed() || socketStream.getKeepAliveTimestamp() <= System.currentTimeMillis()) {
+                    if (socket.isClosed() || socketStream.isTimedOut()) {
                         try {
                             socket.close();
                         } catch (final Throwable ignore) {
@@ -803,7 +804,7 @@ public class HTTPConnectionImpl implements HTTPConnection {
                 for (final InetAddress host : getRemoteIPs()) {
                     this.resetConnection();
                     final int port = getPort(httpURL);
-                    long startMS = Time.getUptimeInMilliSeconds();
+                    long startMS = Time.systemIndependentCurrentJVMTimeMillis();
                     final HTTPProxy lProxy = getProxy();
                     InetAddress bindInetAddress = null;
                     if (lProxy != null) {
@@ -816,64 +817,46 @@ public class HTTPConnectionImpl implements HTTPConnection {
                     final InetSocketAddress connectedInetSocketAddress = new InetSocketAddress(host, port);
                     try {
                         /* try to connect to given host now */
-                        int connectTimeout = this.getConnectTimeout();
-                        if (connectTimeout == 0) {
-                            startMS = Time.getUptimeInMilliSeconds();
+                        final int requestedConnectTimeout = getConnectTimeout();
+                        if (requestedConnectTimeout == 0) {
+                            startMS = Time.systemIndependentCurrentJVMTimeMillis();
                             this.connectionSocket = createConnectionSocket(bindInetAddress);
                             /** no workaround for infinite connect timeouts **/
-                            this.connectionSocket.getSocket().connect(connectedInetSocketAddress, connectTimeout);
+                            this.connectionSocket.getSocket().connect(connectedInetSocketAddress, requestedConnectTimeout);
                         } else {
                             /**
                              * workaround for too early connect timeouts
                              */
+                            int remainingConnectTimeout = requestedConnectTimeout;
                             while (true) {
-                                startMS = Time.getUptimeInMilliSeconds();
+                                startMS = Time.systemIndependentCurrentJVMTimeMillis();
                                 this.connectionSocket = createConnectionSocket(bindInetAddress);
-                                final long beforeConnectMS = Time.getUptimeInMilliSeconds();
+                                final long beforeConnectMS = Time.systemIndependentCurrentJVMTimeMillis();
                                 try {
-                                    this.connectionSocket.getSocket().connect(connectedInetSocketAddress, connectTimeout);
+                                    this.connectionSocket.getSocket().connect(connectedInetSocketAddress, remainingConnectTimeout);
                                     break;
-                                } catch (final ConnectException e) {
+                                } catch (final IOException e) {
                                     closeConnectionSocket(this.connectionSocket);
-                                    if (StringUtils.containsIgnoreCase(e.getMessage(), "timed out")) {
-                                        int timeout = (int) (Time.getUptimeInMilliSeconds() - beforeConnectMS);
+                                    if (Exceptions.containsInstanceOf(e, new Class[] { ConnectException.class, SocketTimeoutException.class }) && StringUtils.containsIgnoreCase(e.getMessage(), "timed out")) {
+                                        long timeout = Time.systemIndependentCurrentJVMTimeMillis() - beforeConnectMS;
                                         if (timeout < 1000) {
-                                            System.out.println("Too Fast ConnectTimeout(Normal): " + timeout + "->Wait " + (2000 - timeout));
+                                            final int sleep = Math.max(100, (int) (2000 - timeout));
+                                            System.out.println("Too Fast ConnectTimeout(Normal): " + timeout + "->Wait " + sleep);
                                             try {
-                                                Thread.sleep(2000 - timeout);
+                                                Thread.sleep(sleep);
+                                                timeout = Time.systemIndependentCurrentJVMTimeMillis() - beforeConnectMS;
                                             } catch (final InterruptedException ie) {
-                                                throw e;
+                                                throw Exceptions.addSuppressed(e, ie);
                                             }
-                                            timeout = (int) (Time.getUptimeInMilliSeconds() - beforeConnectMS);
                                         }
-                                        final int lastConnectTimeout = connectTimeout;
-                                        connectTimeout = Math.max(0, connectTimeout - timeout);
-                                        if (connectTimeout == 0 || Thread.currentThread().isInterrupted()) {
+                                        final int lastConnectTimeout = remainingConnectTimeout;
+                                        remainingConnectTimeout = (int) Math.max(0, remainingConnectTimeout - timeout);
+                                        if (remainingConnectTimeout == 0) {
+                                            throw e;
+                                        } else if (Thread.currentThread().isInterrupted()) {
                                             throw e;
                                         }
                                         System.out.println("Workaround for ConnectTimeout(Normal): " + lastConnectTimeout + ">" + timeout);
-                                    } else {
-                                        throw e;
-                                    }
-                                } catch (final SocketTimeoutException e) {
-                                    closeConnectionSocket(this.connectionSocket);
-                                    if (StringUtils.containsIgnoreCase(e.getMessage(), "timed out")) {
-                                        int timeout = (int) (Time.getUptimeInMilliSeconds() - beforeConnectMS);
-                                        if (timeout < 1000) {
-                                            System.out.println("Too Fast ConnectTimeout(Interrupted): " + timeout + "->Wait " + (2000 - timeout));
-                                            try {
-                                                Thread.sleep(2000 - timeout);
-                                            } catch (final InterruptedException ie) {
-                                                throw e;
-                                            }
-                                            timeout = (int) (Time.getUptimeInMilliSeconds() - beforeConnectMS);
-                                        }
-                                        final int lastConnectTimeout = connectTimeout;
-                                        connectTimeout = Math.max(0, connectTimeout - timeout);
-                                        if (connectTimeout == 0 || Thread.currentThread().isInterrupted()) {
-                                            throw e;
-                                        }
-                                        System.out.println("Workaround for ConnectTimeout(Interrupted): " + lastConnectTimeout + ">" + timeout);
                                     } else {
                                         throw e;
                                     }
@@ -888,7 +871,7 @@ public class HTTPConnectionImpl implements HTTPConnection {
                             }
                             this.connectionSocket = factory.create(connectionSocket, hostName, port, true, sslSocketStreamOptions);
                         }
-                        this.connectTime = Time.getUptimeInMilliSeconds() - startMS;
+                        this.connectTime = Time.systemIndependentCurrentJVMTimeMillis() - startMS;
                         ee = null;
                         break;
                     } catch (final IOException e) {
@@ -989,7 +972,7 @@ public class HTTPConnectionImpl implements HTTPConnection {
                 /* flush outputstream in case some buffers are not flushed yet */
                 this.outputStream.flush();
             }
-            final long startTime = System.currentTimeMillis();
+            final long startTime = Time.systemIndependentCurrentJVMTimeMillis();
             final InputStream inputStream = connectionSocket.getInputStream();
             this.inputStreamConnected = true;
             /* first read http header */
@@ -1074,7 +1057,7 @@ public class HTTPConnectionImpl implements HTTPConnection {
                 header.get(bytes);
                 temp = fromBytes(bytes, -1, -1);
             }
-            this.requestTime = System.currentTimeMillis() - startTime;
+            this.requestTime = Time.systemIndependentCurrentJVMTimeMillis() - startTime;
             /*
              * split header into single strings, use RN or N(buggy fucking non rfc)
              */
@@ -1380,8 +1363,8 @@ public class HTTPConnectionImpl implements HTTPConnection {
                 sb.append("Local: ").append(this.proxy.getLocal()).append("\r\n");
             }
         }
-        sb.append("Connection-Timeout: ").append(this.connectTimeout + "ms").append("\r\n");
-        sb.append("Read-Timeout: ").append(readTimeout + "ms").append("\r\n");
+        sb.append("Connection-Timeout: ").append(getConnectTimeout() + "ms").append("\r\n");
+        sb.append("Read-Timeout: ").append(getReadTimeout() + "ms").append("\r\n");
         if (this.connectExceptions.size() > 0) {
             sb.append("----------------ConnectionExceptions-------------------------\r\n");
             int index = 0;
@@ -1605,7 +1588,7 @@ public class HTTPConnectionImpl implements HTTPConnection {
     }
 
     public void setConnectTimeout(final int connectTimeout) {
-        this.connectTimeout = Math.max(0, connectTimeout);
+        this.requestedConnectTimeout = Math.max(0, connectTimeout);
     }
 
     @Override

@@ -39,6 +39,7 @@ import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.appwork.loggingv3.LogV3;
+import org.appwork.utils.Time;
 import org.appwork.utils.processes.ProcessBuilderFactory;
 
 /**
@@ -209,17 +210,17 @@ public class ProcessStreamReader extends Thread implements AsyncInputStreamHandl
     public void waitFor() throws InterruptedException {
         notifyProcessExited();
         long processReadLast = getProcessRead();
-        long timeStamp = System.currentTimeMillis();
+        long timeStamp = Time.getUptimeInMilliSeconds();
         try {
             while (isAlive()) {
                 final long now = getProcessRead();
                 if (processReadLast == now) {
-                    if (System.currentTimeMillis() - timeStamp > getMaxWaitFor()) {
+                    if (Time.getUptimeInMilliSeconds() - timeStamp > getMaxWaitFor()) {
                         break;
                     }
                 } else {
                     processReadLast = now;
-                    timeStamp = System.currentTimeMillis();
+                    timeStamp = Time.getUptimeInMilliSeconds();
                 }
                 Thread.sleep(50);
             }

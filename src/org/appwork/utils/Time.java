@@ -33,6 +33,8 @@
  * ==================================================================================================================================================== */
 package org.appwork.utils;
 
+import java.util.concurrent.TimeUnit;
+
 /**
  * @author Thomas
  * @date 13.08.2019
@@ -40,17 +42,23 @@ package org.appwork.utils;
  */
 public class Time {
 
-    public static void main(String[] args) {
-        while (true) {
-            long startTime = System.nanoTime();
-            // Let's hope the current Thread is switched to an another CORE or
-            // enters some power saving mode that lowers the TSC's frequency
-            Thread.yield();
-            long time = System.nanoTime() - startTime;
-            if (time < 0L) {
-                System.out.println(time);
-            }
-        }
+    private static final long uptimeNanoTimeReference      = System.nanoTime();
+    private static final long uptimeCurrentMillisReference = System.currentTimeMillis();
+
+    /**
+     * This method can only be used to measure elapsed time but does't reflect system or wall-clock time.
+     *
+     * Differences in successive calls that span greater than approximately 292 years (263 nanoseconds) will not correctly compute elapsed
+     * time due to numerical overflow, see {@link java.lang.System#nanoTime()}
+     *
+     * The values returned by this method become meaningful only when the difference between two such values, obtained within the same
+     * instance of a Java virtual machine, is computed.
+     *
+     * @return
+     */
+    public static final long systemIndependentCurrentJVMTimeMillis() {
+        final long difference = System.nanoTime() - uptimeNanoTimeReference;
+        return uptimeCurrentMillisReference + TimeUnit.NANOSECONDS.toMillis(difference);
     }
 
     /**
@@ -87,8 +95,8 @@ public class Time {
      *
      * @return
      */
-    public static long getUptimeInMilliSeconds() {
-        return getUptimeInNanoSeconds() / 1000000l;
+    public final static long getUptimeInMilliSeconds() {
+        return TimeUnit.NANOSECONDS.toMillis(getUptimeInNanoSeconds());
     }
 
     /**
@@ -128,10 +136,8 @@ public class Time {
      *
      * @return
      */
-    public synchronized static long getUptimeInNanoSeconds() {
-
+    public final static long getUptimeInNanoSeconds() {
         return System.nanoTime();
-
     }
 
 }

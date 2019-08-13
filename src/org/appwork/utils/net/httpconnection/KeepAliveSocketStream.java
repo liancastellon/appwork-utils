@@ -40,6 +40,7 @@ import java.net.InetAddress;
 import java.net.Socket;
 
 import org.appwork.utils.StringUtils;
+import org.appwork.utils.Time;
 
 /**
  * @author daniel
@@ -131,12 +132,12 @@ public class KeepAliveSocketStream implements SocketStreamInterface {
         return false;
     }
 
-    public long getKeepAliveTimestamp() {
-        return this.keepAliveTimestamp;
+    public boolean isTimedOut() {
+        return Time.systemIndependentCurrentJVMTimeMillis() >= keepAliveTimestamp;
     }
 
     public void keepAlive() {
-        this.keepAliveTimestamp = System.currentTimeMillis() + this.getKeepAliveTimeout();
+        this.keepAliveTimestamp = Time.systemIndependentCurrentJVMTimeMillis() + getKeepAliveTimeout();
     }
 
     public KeepAliveSocketStream(final String host, final SocketStreamInterface socket, final long keepAliveTimeout, final long maxRequests, final InetAddress boundIP, final InetAddress[] remoteIPs) {

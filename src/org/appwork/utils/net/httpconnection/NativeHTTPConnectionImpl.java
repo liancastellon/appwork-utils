@@ -62,6 +62,7 @@ import org.appwork.net.protocol.http.HTTPConstants;
 import org.appwork.utils.Exceptions;
 import org.appwork.utils.JVMVersion;
 import org.appwork.utils.StringUtils;
+import org.appwork.utils.Time;
 import org.appwork.utils.net.CountingInputStream;
 import org.appwork.utils.net.CountingOutputStream;
 import org.appwork.utils.net.EmptyInputStream;
@@ -224,7 +225,7 @@ public class NativeHTTPConnectionImpl implements HTTPConnection {
             return;/* oder fehler */
         }
         this.wasConnected = false;
-        final long startTime = System.currentTimeMillis();
+        final long startTime = Time.systemIndependentCurrentJVMTimeMillis();
         if (this.proxy != null) {
             switch (this.proxy.getType()) {
             case HTTP:
@@ -302,7 +303,7 @@ public class NativeHTTPConnectionImpl implements HTTPConnection {
         this.con.connect();
         this.connected = true;
         this.wasConnected = true;
-        this.requestTime = System.currentTimeMillis() - startTime;
+        this.requestTime = Time.systemIndependentCurrentJVMTimeMillis() - startTime;
         if (this.isRequiresOutputStream() == false) {
             this.outputStream = new NullOutputStream();
             this.outputClosed = true;
