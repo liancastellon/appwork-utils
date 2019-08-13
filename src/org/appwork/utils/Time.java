@@ -40,24 +40,98 @@ package org.appwork.utils;
  */
 public class Time {
 
+    public static void main(String[] args) {
+        while (true) {
+            long startTime = System.nanoTime();
+            // Let's hope the current Thread is switched to an another CORE or
+            // enters some power saving mode that lowers the TSC's frequency
+            Thread.yield();
+            long time = System.nanoTime() - startTime;
+            if (time < 0L) {
+                System.out.println(time);
+            }
+        }
+    }
+
     /**
      * this method returns the elapsed ms since the JVM got started. WARNING: THIS IS NOT A UNIX TIMESTAMP!. Since it it is based on
-     * System.nanoTime(), the value is not affected if the user changes his local system time or timezone.
+     * System.nanoTime(), the value is not affected if the user changes his local system time or timezone. WARNING: Keep in mind that it
+     * might happen, that 2 subsequent System.nanoTime() calls may result in the first call haveing a higher number than the second.
+     * (https://www.kapsi.de/blog/a-big-flaw-in-javas-nanotime). However.. I could not provoke this issue in my testcase.
+     *
+     * https://docs.oracle.com/javase/9/docs/api/java/lang/System.html#nanoTime-- Returns the current value of the running Java Virtual
+     * Machine's high-resolution time source, in nanoseconds. This method can only be used to measure elapsed time and is not related to any
+     * other notion of system or wall-clock time. The value returned represents nanoseconds since some fixed but arbitrary origin time
+     * (perhaps in the future, so values may be negative). The same origin is used by all invocations of this method in an instance of a
+     * Java virtual machine; other virtual machine instances are likely to use a different origin.
+     *
+     * This method provides nanosecond precision, but not necessarily nanosecond resolution (that is, how frequently the value changes) - no
+     * guarantees are made except that the resolution is at least as good as that of currentTimeMillis().
+     *
+     * Differences in successive calls that span greater than approximately 292 years (263 nanoseconds) will not correctly compute elapsed
+     * time due to numerical overflow.
+     *
+     * The values returned by this method become meaningful only when the difference between two such values, obtained within the same
+     * instance of a Java virtual machine, is computed.
+     *
+     * For example, to measure how long some code takes to execute:
+     *
+     *
+     * long startTime = System.nanoTime(); // ... the code being measured ... long elapsedNanos = System.nanoTime() - startTime; To compare
+     * elapsed time against a timeout, use
+     *
+     *
+     * if (System.nanoTime() - startTime >= timeoutNanos) ... instead of
+     *
+     * if (System.nanoTime() >= startTime + timeoutNanos) ... because of the possibility of numerical overflow.
      *
      * @return
      */
     public static long getUptimeInMilliSeconds() {
-        return System.nanoTime() / 1000000l;
+        return getUptimeInNanoSeconds() / 1000000l;
     }
 
     /**
      * this method returns the elapsed ns since the JVM got started. WARNING: THIS IS NOT A UNIX TIMESTAMP!. Since it it is based on
-     * System.nanoTime(), the value is not affected if the user changes his local system time or timezone.
+     * System.nanoTime(), the value is not affected if the user changes his local system time or timezone. This method ensures that the
+     * counter. WARNING: Keep in mind that it might happen, that 2 subsequent System.nanoTime() calls may result in the first call haveing a
+     * higher number than the second. (https://www.kapsi.de/blog/a-big-flaw-in-javas-nanotime). However.. I could not provoke this issue in
+     * my testcase.
+     *
+     *
+     * * https://docs.oracle.com/javase/9/docs/api/java/lang/System.html#nanoTime-- Returns the current value of the running Java Virtual
+     * Machine's high-resolution time source, in nanoseconds. This method can only be used to measure elapsed time and is not related to any
+     * other notion of system or wall-clock time. The value returned represents nanoseconds since some fixed but arbitrary origin time
+     * (perhaps in the future, so values may be negative). The same origin is used by all invocations of this method in an instance of a
+     * Java virtual machine; other virtual machine instances are likely to use a different origin.
+     *
+     * This method provides nanosecond precision, but not necessarily nanosecond resolution (that is, how frequently the value changes) - no
+     * guarantees are made except that the resolution is at least as good as that of currentTimeMillis().
+     *
+     * Differences in successive calls that span greater than approximately 292 years (263 nanoseconds) will not correctly compute elapsed
+     * time due to numerical overflow.
+     *
+     * The values returned by this method become meaningful only when the difference between two such values, obtained within the same
+     * instance of a Java virtual machine, is computed.
+     *
+     * For example, to measure how long some code takes to execute:
+     *
+     *
+     * long startTime = System.nanoTime(); // ... the code being measured ... long elapsedNanos = System.nanoTime() - startTime; To compare
+     * elapsed time against a timeout, use
+     *
+     *
+     * if (System.nanoTime() - startTime >= timeoutNanos) ... instead of
+     *
+     * if (System.nanoTime() >= startTime + timeoutNanos) ... because of the possibility of numerical overflow.
+     *
      *
      * @return
      */
-    public static long getUptimeInNanoSeconds() {
+    public synchronized static long getUptimeInNanoSeconds() {
+
         return System.nanoTime();
+
     }
 
 }
