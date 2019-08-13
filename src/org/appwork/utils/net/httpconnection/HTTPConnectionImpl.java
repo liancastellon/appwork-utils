@@ -71,6 +71,7 @@ import org.appwork.utils.Application;
 import org.appwork.utils.KeyValueStringEntry;
 import org.appwork.utils.Regex;
 import org.appwork.utils.StringUtils;
+import org.appwork.utils.Time;
 import org.appwork.utils.encoding.URLDecoderFixer;
 import org.appwork.utils.net.ChunkedInputStream;
 import org.appwork.utils.net.CountingInputStream;
@@ -802,7 +803,7 @@ public class HTTPConnectionImpl implements HTTPConnection {
                 for (final InetAddress host : getRemoteIPs()) {
                     this.resetConnection();
                     final int port = getPort(httpURL);
-                    long startTime = System.currentTimeMillis();
+                    long startMS = Time.getUptimeInMilliSeconds();
                     final HTTPProxy lProxy = getProxy();
                     InetAddress bindInetAddress = null;
                     if (lProxy != null) {
@@ -817,7 +818,7 @@ public class HTTPConnectionImpl implements HTTPConnection {
                         /* try to connect to given host now */
                         int connectTimeout = this.getConnectTimeout();
                         if (connectTimeout == 0) {
-                            startTime = System.currentTimeMillis();
+                            startMS = Time.getUptimeInMilliSeconds();
                             this.connectionSocket = createConnectionSocket(bindInetAddress);
                             /** no workaround for infinite connect timeouts **/
                             this.connectionSocket.getSocket().connect(connectedInetSocketAddress, connectTimeout);
@@ -826,16 +827,16 @@ public class HTTPConnectionImpl implements HTTPConnection {
                              * workaround for too early connect timeouts
                              */
                             while (true) {
-                                startTime = System.currentTimeMillis();
+                                startMS = Time.getUptimeInMilliSeconds();
                                 this.connectionSocket = createConnectionSocket(bindInetAddress);
-                                final long beforeConnect = System.currentTimeMillis();
+                                final long beforeConnectMS = Time.getUptimeInMilliSeconds();
                                 try {
                                     this.connectionSocket.getSocket().connect(connectedInetSocketAddress, connectTimeout);
                                     break;
                                 } catch (final ConnectException e) {
                                     closeConnectionSocket(this.connectionSocket);
                                     if (StringUtils.containsIgnoreCase(e.getMessage(), "timed out")) {
-                                        int timeout = (int) (System.currentTimeMillis() - beforeConnect);
+                                        int timeout = (int) (Time.getUptimeInMilliSeconds() - beforeConnectMS);
                                         if (timeout < 1000) {
                                             System.out.println("Too Fast ConnectTimeout(Normal): " + timeout + "->Wait " + (2000 - timeout));
                                             try {
@@ -843,7 +844,7 @@ public class HTTPConnectionImpl implements HTTPConnection {
                                             } catch (final InterruptedException ie) {
                                                 throw e;
                                             }
-                                            timeout = (int) (System.currentTimeMillis() - beforeConnect);
+                                            timeout = (int) (Time.getUptimeInMilliSeconds() - beforeConnectMS);
                                         }
                                         final int lastConnectTimeout = connectTimeout;
                                         connectTimeout = Math.max(0, connectTimeout - timeout);
@@ -857,7 +858,7 @@ public class HTTPConnectionImpl implements HTTPConnection {
                                 } catch (final SocketTimeoutException e) {
                                     closeConnectionSocket(this.connectionSocket);
                                     if (StringUtils.containsIgnoreCase(e.getMessage(), "timed out")) {
-                                        int timeout = (int) (System.currentTimeMillis() - beforeConnect);
+                                        int timeout = (int) (Time.getUptimeInMilliSeconds() - beforeConnectMS);
                                         if (timeout < 1000) {
                                             System.out.println("Too Fast ConnectTimeout(Interrupted): " + timeout + "->Wait " + (2000 - timeout));
                                             try {
@@ -865,7 +866,7 @@ public class HTTPConnectionImpl implements HTTPConnection {
                                             } catch (final InterruptedException ie) {
                                                 throw e;
                                             }
-                                            timeout = (int) (System.currentTimeMillis() - beforeConnect);
+                                            timeout = (int) (Time.getUptimeInMilliSeconds() - beforeConnectMS);
                                         }
                                         final int lastConnectTimeout = connectTimeout;
                                         connectTimeout = Math.max(0, connectTimeout - timeout);
@@ -887,7 +888,7 @@ public class HTTPConnectionImpl implements HTTPConnection {
                             }
                             this.connectionSocket = factory.create(connectionSocket, hostName, port, true, sslSocketStreamOptions);
                         }
-                        this.connectTime = System.currentTimeMillis() - startTime;
+                        this.connectTime = Time.getUptimeInMilliSeconds() - startMS;
                         ee = null;
                         break;
                     } catch (final IOException e) {
