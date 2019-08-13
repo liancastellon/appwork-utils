@@ -43,6 +43,7 @@ import java.nio.ByteBuffer;
 
 import org.appwork.utils.Regex;
 import org.appwork.utils.StringUtils;
+import org.appwork.utils.Time;
 import org.appwork.utils.encoding.Base64;
 
 public class HTTPProxyHTTPConnectionImpl extends HTTPConnectionImpl {
@@ -101,10 +102,11 @@ public class HTTPProxyHTTPConnectionImpl extends HTTPConnectionImpl {
                     hosts = this.resolvHostIP(this.proxy.getHost());
                 }
                 IOException ee = null;
-                long startTime = System.currentTimeMillis();
+
+                long startTime = Time.getUptimeInMilliSeconds();
                 for (final InetAddress host : hosts) {
                     this.resetConnection();
-                    startTime = System.currentTimeMillis();
+                    startTime = Time.getUptimeInMilliSeconds();
                     this.connectionSocket = createConnectionSocket(null);
                     try {
                         /* create and connect to socks5 proxy */
@@ -136,7 +138,7 @@ public class HTTPProxyHTTPConnectionImpl extends HTTPConnectionImpl {
                         throw new ProxyConnectException(e, this.proxy);
                     }
                 }
-                this.connectTime = System.currentTimeMillis() - startTime;
+                this.connectTime = Time.getUptimeInMilliSeconds() - startTime;
                 if (this.httpURL.getProtocol().startsWith("https") || this.isConnectMethodPrefered()) {
                     /* ssl via CONNECT method or because we prefer CONNECT */
                     /* build CONNECT request */
