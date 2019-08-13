@@ -841,7 +841,7 @@ public class HTTPConnectionImpl implements HTTPConnection {
                                         long timeout = Time.systemIndependentCurrentJVMTimeMillis() - beforeConnectMS;
                                         if (timeout < 1000) {
                                             final int sleep = Math.max(100, (int) (2000 - timeout));
-                                            System.out.println("Too Fast ConnectTimeout(Normal): " + timeout + "->Wait " + sleep);
+                                            this.connectExceptions.add("Too Fast ConnectTimeout(Normal): " + timeout + "->Wait " + sleep);
                                             try {
                                                 Thread.sleep(sleep);
                                                 timeout = Time.systemIndependentCurrentJVMTimeMillis() - beforeConnectMS;
@@ -856,7 +856,7 @@ public class HTTPConnectionImpl implements HTTPConnection {
                                         } else if (Thread.currentThread().isInterrupted()) {
                                             throw e;
                                         }
-                                        System.out.println("Workaround for ConnectTimeout(Normal): " + lastConnectTimeout + ">" + timeout);
+                                        this.connectExceptions.add("Workaround for ConnectTimeout(Normal): " + lastConnectTimeout + ">" + timeout);
                                     } else {
                                         throw e;
                                     }

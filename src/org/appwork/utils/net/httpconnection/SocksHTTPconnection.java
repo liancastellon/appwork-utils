@@ -116,7 +116,7 @@ public abstract class SocksHTTPconnection extends HTTPConnectionImpl {
                 return;
             } catch (final javax.net.ssl.SSLException e) {
                 try {
-                    this.connectExceptions.add("Socks:" + SocketConnection.getRootEndPointSocketAddress(sockssocket) + "|EndPoint:" + this.proxyInetSocketAddress + "|Exception:" + e.getMessage());
+                    this.connectExceptions.add("Socks(" + getProxy().getType() + ":)" + SocketConnection.getRootEndPointSocketAddress(sockssocket) + "|EndPoint:" + this.proxyInetSocketAddress + "|Exception:" + e.getMessage());
                 } finally {
                     this.disconnect();
                 }
@@ -127,7 +127,7 @@ public abstract class SocksHTTPconnection extends HTTPConnectionImpl {
                 }
             } catch (final IOException e) {
                 try {
-                    this.connectExceptions.add("Socks:" + SocketConnection.getRootEndPointSocketAddress(sockssocket) + "|EndPoint:" + this.proxyInetSocketAddress + "|Exception:" + e.getMessage());
+                    this.connectExceptions.add("Socks(" + getProxy().getType() + ":)" + SocketConnection.getRootEndPointSocketAddress(sockssocket) + "|EndPoint:" + this.proxyInetSocketAddress + "|Exception:" + e.getMessage());
                 } finally {
                     this.disconnect();
                 }
