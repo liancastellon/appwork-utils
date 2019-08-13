@@ -113,7 +113,7 @@ public class HTTPProxyHTTPConnectionImpl extends HTTPConnectionImpl {
                         final InetSocketAddress connectedInetSocketAddress = new InetSocketAddress(host, this.proxy.getPort());
                         proxyInetSocketAddress = connectedInetSocketAddress;
 
-                        this.connectionSocket.getSocket().connect(proxyInetSocketAddress, this.connectTimeout);
+                        this.connectionSocket.getSocket().connect(proxyInetSocketAddress, getConnectTimeout());
                         /* connection is okay */
                         ee = null;
                         break;

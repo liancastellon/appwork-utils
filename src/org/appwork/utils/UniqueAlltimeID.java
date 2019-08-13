@@ -10,12 +10,6 @@ public class UniqueAlltimeID {
         this.id = next();
     }
 
-    public static void main(String[] args) {
-        for (int i = 0; i < 20000000; i++) {
-            System.out.println(UniqueAlltimeID.next());
-        }
-    }
-
     private static long createUniqueAlltimeID() {
         long id = -1;
         while (true) {
@@ -47,16 +41,13 @@ public class UniqueAlltimeID {
     public boolean equals(Object o) {
         if (o == null) {
             return false;
-        }
-        if (this == o) {
+        } else if (this == o) {
             return true;
+        } else if (o instanceof UniqueAlltimeID) {
+            return ((UniqueAlltimeID) o).id == id;
+        } else {
+            return false;
         }
-        if (o instanceof UniqueAlltimeID) {
-            if (((UniqueAlltimeID) o).id == id) {
-                return true;
-            }
-        }
-        return false;
     }
 
     public long getID() {

@@ -39,6 +39,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.URL;
 
+import org.appwork.utils.Time;
 import org.appwork.utils.net.httpconnection.HTTPConnectionUtils.IPVERSION;
 import org.appwork.utils.net.socketconnection.SocketConnection;
 
@@ -81,7 +82,7 @@ public abstract class SocksHTTPconnection extends HTTPConnectionImpl {
             this.resetConnection();
             this.proxyRequest = new StringBuffer();
             try {
-                final long startTime = System.currentTimeMillis();
+                final long startTime = Time.systemIndependentCurrentJVMTimeMillis();
                 this.sockssocket = this.createConnectionSocket(null);
                 this.sockssocket = connect(sockssocket);
                 if (this.httpURL.getProtocol().startsWith("https")) {
@@ -109,7 +110,7 @@ public abstract class SocksHTTPconnection extends HTTPConnectionImpl {
                 }
                 this.setReadTimeout(this.readTimeout);
                 this.httpResponseCode = -1;
-                this.connectTime = System.currentTimeMillis() - startTime;
+                this.connectTime = Time.systemIndependentCurrentJVMTimeMillis() - startTime;
                 /* now send Request */
                 this.sendRequest();
                 return;

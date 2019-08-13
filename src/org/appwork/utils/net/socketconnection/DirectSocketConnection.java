@@ -42,7 +42,9 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketTimeoutException;
 
+import org.appwork.utils.Exceptions;
 import org.appwork.utils.StringUtils;
+import org.appwork.utils.Time;
 import org.appwork.utils.net.httpconnection.HTTPConnectionImpl;
 import org.appwork.utils.net.httpconnection.HTTPProxy;
 import org.appwork.utils.net.httpconnection.ProxyAuthException;
@@ -78,56 +80,37 @@ public class DirectSocketConnection extends SocketConnection {
                     /**
                      * workaround for too early connect timeouts
                      */
-                    int connectTimeoutWorkaround = connectTimeout;
+                    int remainingConnectTimeout = connectTimeout;
                     while (true) {
-                        final long beforeConnect = System.currentTimeMillis();
+                        final long beforeConnectMS = Time.systemIndependentCurrentJVMTimeMillis();
                         try {
                             final SocketStreamInterface connectSocket = this.createConnectSocket(endPoint, connectTimeout);
                             connect(connectSocket, endPoint, connectTimeout);
                             break;
-                        } catch (final ConnectException cE) {
+                        } catch (final IOException e) {
                             closeConnectSocket();
-                            if (StringUtils.containsIgnoreCase(cE.getMessage(), "timed out")) {
-                                int timeout = (int) (System.currentTimeMillis() - beforeConnect);
+                            if (Exceptions.containsInstanceOf(e, new Class[] { ConnectException.class, SocketTimeoutException.class }) && StringUtils.containsIgnoreCase(e.getMessage(), "timed out")) {
+                                long timeout = Time.systemIndependentCurrentJVMTimeMillis() - beforeConnectMS;
                                 if (timeout < 1000) {
-                                    System.out.println("Too Fast ConnectTimeout(Normal): " + timeout + "->Wait " + (2000 - timeout));
+                                    final int sleep = Math.max(100, (int) (2000 - timeout));
+                                    System.out.println("Too Fast ConnectTimeout(Normal): " + timeout + "->Wait " + sleep);
                                     try {
-                                        Thread.sleep(2000 - timeout);
+                                        Thread.sleep(sleep);
+                                        timeout = Time.systemIndependentCurrentJVMTimeMillis() - beforeConnectMS;
                                     } catch (final InterruptedException ie) {
-                                        throw cE;
+                                        throw Exceptions.addSuppressed(e, ie);
                                     }
-                                    timeout = (int) (System.currentTimeMillis() - beforeConnect);
                                 }
-                                final int lastConnectTimeout = connectTimeoutWorkaround;
-                                connectTimeoutWorkaround = Math.max(0, connectTimeoutWorkaround - timeout);
-                                if (connectTimeoutWorkaround == 0 || Thread.currentThread().isInterrupted()) {
-                                    throw cE;
+                                final int lastConnectTimeout = remainingConnectTimeout;
+                                remainingConnectTimeout = (int) Math.max(0, remainingConnectTimeout - timeout);
+                                if (remainingConnectTimeout == 0) {
+                                    throw e;
+                                } else if (Thread.currentThread().isInterrupted()) {
+                                    throw e;
                                 }
                                 System.out.println("Workaround for ConnectTimeout(Normal): " + lastConnectTimeout + ">" + timeout);
                             } else {
-                                throw cE;
-                            }
-                        } catch (final SocketTimeoutException sTE) {
-                            closeConnectSocket();
-                            if (StringUtils.containsIgnoreCase(sTE.getMessage(), "timed out")) {
-                                int timeout = (int) (System.currentTimeMillis() - beforeConnect);
-                                if (timeout < 1000) {
-                                    System.out.println("Too Fast ConnectTimeout(Interrupted): " + timeout + "->Wait " + (2000 - timeout));
-                                    try {
-                                        Thread.sleep(2000 - timeout);
-                                    } catch (final InterruptedException ie) {
-                                        throw sTE;
-                                    }
-                                    timeout = (int) (System.currentTimeMillis() - beforeConnect);
-                                }
-                                final int lastConnectTimeout = connectTimeoutWorkaround;
-                                connectTimeoutWorkaround = Math.max(0, connectTimeoutWorkaround - timeout);
-                                if (connectTimeoutWorkaround == 0 || Thread.currentThread().isInterrupted()) {
-                                    throw sTE;
-                                }
-                                System.out.println("Workaround for ConnectTimeout(Interrupted): " + lastConnectTimeout + ">" + timeout);
-                            } else {
-                                throw sTE;
+                                throw e;
                             }
                         }
                     }
