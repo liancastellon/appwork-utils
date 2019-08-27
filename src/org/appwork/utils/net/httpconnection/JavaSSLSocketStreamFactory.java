@@ -39,18 +39,22 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.security.NoSuchAlgorithmException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateParsingException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
 import javax.net.ssl.SNIServerName;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLSession;
@@ -75,6 +79,30 @@ public class JavaSSLSocketStreamFactory implements SSLSocketStreamFactory {
 
     public static SSLSocketFactory getSSLSocketFactory(final boolean useSSLTrustAll) throws IOException {
         return getSSLSocketFactory(useSSLTrustAll, null);
+    }
+
+    /*
+     * https://risdenk.github.io/2018/03/26/oracle-jdk-missing-ciphers-libsunec.so.html
+     *
+     *
+     * TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256, TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
+     * TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA
+     */
+    public static void isCipherSuiteSupported(final String... cipherSuites) throws SSLException {
+        try {
+            final SSLContext context = SSLContext.getDefault();
+            final SSLParameters parameters = context.getSupportedSSLParameters();
+            final Set<String> supportedCipherSuites = new HashSet<String>(Arrays.asList(parameters.getCipherSuites()));
+            for (final String cipherSuite : cipherSuites) {
+                if (!supportedCipherSuites.contains(cipherSuite)) {
+                    throw new SSLException(cipherSuite + " is unsupported!");
+                }
+            }
+        } catch (NoSuchAlgorithmException e) {
+            throw new SSLException(e);
+        } catch (RuntimeException e) {
+            throw new SSLException(e);
+        }
     }
 
     public static SSLSocketFactory getSSLSocketFactory(final boolean useSSLTrustAll, final Set<String> disabledCipherSuites) throws IOException {
