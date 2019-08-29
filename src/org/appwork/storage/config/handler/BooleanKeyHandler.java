@@ -36,6 +36,7 @@ package org.appwork.storage.config.handler;
 import java.lang.annotation.Annotation;
 
 import org.appwork.storage.config.annotations.DefaultBooleanValue;
+import org.appwork.utils.StringUtils;
 
 /**
  * @author Thomas
@@ -49,12 +50,10 @@ public class BooleanKeyHandler extends KeyHandler<Boolean> {
      */
     public BooleanKeyHandler(final StorageHandler<?> storageHandler, final String key) {
         super(storageHandler, key);
-        // TODO Auto-generated constructor stub
     }
 
     @Override
     protected Class<? extends Annotation> getDefaultAnnotation() {
-
         return DefaultBooleanValue.class;
     }
 
@@ -63,12 +62,6 @@ public class BooleanKeyHandler extends KeyHandler<Boolean> {
         this.setDefaultValue(false);
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.appwork.storage.config.KeyHandler#initHandler()
-     */
-
     @Override
     protected void initHandler() {
         setStorageSyncMode(getDefaultStorageSyncMode());
@@ -76,17 +69,9 @@ public class BooleanKeyHandler extends KeyHandler<Boolean> {
 
     public boolean isEnabled() {
         final Boolean value = this.getValue();
-        if (value == null || value == false) {
-            return false;
-        }
-        return true;
+        return value != null && value.booleanValue();
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.appwork.storage.config.KeyHandler#putValue(java.lang.Object)
-     */
     @Override
     protected void putValue(final Boolean object) {
         this.storageHandler.getPrimitiveStorage().put(this.getKey(), object);
@@ -99,19 +84,24 @@ public class BooleanKeyHandler extends KeyHandler<Boolean> {
     }
 
     @Override
-    public Boolean getValue() {
-        return super.getValue();
+    protected Boolean getValueStorage() {
+        final Object rawValue = getRawValueStorage();
+        if (rawValue instanceof Boolean) {
+            return (Boolean) rawValue;
+        } else if (rawValue instanceof String) {
+            if (StringUtils.equalsIgnoreCase("true", (String) rawValue) || StringUtils.equals("1", (String) rawValue)) {
+                return Boolean.TRUE;
+            } else if (StringUtils.equalsIgnoreCase("false", (String) rawValue) || StringUtils.equals("0", (String) rawValue)) {
+                return Boolean.FALSE;
+            } else if (StringUtils.equalsIgnoreCase("null", (String) rawValue)) {
+                return null;
+            }
+        }
+        return (Boolean) rawValue;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see org.appwork.storage.config.KeyHandler#validateValue(java.lang.Object)
-     */
     @Override
     protected void validateValue(final Boolean object) throws Throwable {
-        // TODO Auto-generated method stub
-
     }
 
 }

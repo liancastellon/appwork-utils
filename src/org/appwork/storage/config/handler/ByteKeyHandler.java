@@ -39,6 +39,7 @@ import org.appwork.storage.config.ValidationException;
 import org.appwork.storage.config.annotations.DefaultByteValue;
 import org.appwork.storage.config.annotations.LookUpKeys;
 import org.appwork.storage.config.annotations.SpinnerValidator;
+import org.appwork.utils.StringUtils;
 
 /**
  * @author Thomas
@@ -84,11 +85,22 @@ public class ByteKeyHandler extends KeyHandler<Byte> {
         this.setDefaultValue((byte) 0);
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see org.appwork.storage.config.KeyHandler#initHandler()
-     */
+    @Override
+    protected Byte getValueStorage() {
+        final Object rawValue = getRawValueStorage();
+        if (rawValue instanceof Number) {
+            return ((Number) rawValue).byteValue();
+        } else if (rawValue instanceof String) {
+            if (StringUtils.equalsIgnoreCase("null", (String) rawValue)) {
+                return null;
+            } else {
+                return Byte.parseByte((String) rawValue);
+            }
+        } else {
+            return (Byte) rawValue;
+        }
+    }
+
     @Override
     protected void initHandler() {
         this.validator = this.getAnnotation(SpinnerValidator.class);
@@ -99,21 +111,11 @@ public class ByteKeyHandler extends KeyHandler<Byte> {
         setStorageSyncMode(getDefaultStorageSyncMode());
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see org.appwork.storage.config.KeyHandler#putValue(java.lang.Object)
-     */
     @Override
     protected void putValue(final Byte object) {
         this.storageHandler.getPrimitiveStorage().put(this.getKey(), object);
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.appwork.storage.config.KeyHandler#validateValue(java.lang.Object)
-     */
     @Override
     protected void validateValue(final Byte object) throws Throwable {
         if (this.validator != null) {

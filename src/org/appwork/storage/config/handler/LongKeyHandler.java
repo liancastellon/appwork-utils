@@ -39,6 +39,7 @@ import org.appwork.storage.config.ValidationException;
 import org.appwork.storage.config.annotations.DefaultLongValue;
 import org.appwork.storage.config.annotations.LookUpKeys;
 import org.appwork.storage.config.annotations.SpinnerValidator;
+import org.appwork.utils.StringUtils;
 
 /**
  * @author Thomas
@@ -55,7 +56,6 @@ public class LongKeyHandler extends KeyHandler<Long> {
      */
     public LongKeyHandler(final StorageHandler<?> storageHandler, final String key) {
         super(storageHandler, key);
-        // TODO Auto-generated constructor stub
     }
 
     @SuppressWarnings("unchecked")
@@ -74,11 +74,6 @@ public class LongKeyHandler extends KeyHandler<Long> {
         this.setDefaultValue(Long.valueOf(0));
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.appwork.storage.config.KeyHandler#initHandler()
-     */
     @Override
     protected void initHandler() {
         this.validator = this.getAnnotation(SpinnerValidator.class);
@@ -89,21 +84,27 @@ public class LongKeyHandler extends KeyHandler<Long> {
         setStorageSyncMode(getDefaultStorageSyncMode());
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.appwork.storage.config.KeyHandler#putValue(java.lang.Object)
-     */
+    @Override
+    protected Long getValueStorage() {
+        final Object rawValue = getRawValueStorage();
+        if (rawValue instanceof Number) {
+            return ((Number) rawValue).longValue();
+        } else if (rawValue instanceof String) {
+            if (StringUtils.equalsIgnoreCase("null", (String) rawValue)) {
+                return null;
+            } else {
+                return Long.parseLong((String) rawValue);
+            }
+        } else {
+            return (Long) rawValue;
+        }
+    }
+
     @Override
     protected void putValue(final Long object) {
         this.storageHandler.getPrimitiveStorage().put(this.getKey(), object);
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see org.appwork.storage.config.KeyHandler#validateValue(java.lang.Object)
-     */
     @Override
     protected void validateValue(final Long object) throws Throwable {
         if (this.validator != null) {

@@ -36,6 +36,7 @@ package org.appwork.storage.config.handler;
 import java.lang.annotation.Annotation;
 
 import org.appwork.storage.config.annotations.DefaultFloatValue;
+import org.appwork.utils.StringUtils;
 
 /**
  * @author Thomas
@@ -49,12 +50,10 @@ public class FloatKeyHandler extends KeyHandler<Float> {
      */
     public FloatKeyHandler(final StorageHandler<?> storageHandler, final String key) {
         super(storageHandler, key);
-        // TODO Auto-generated constructor stub
     }
 
     @Override
     protected Class<? extends Annotation> getDefaultAnnotation() {
-
         return DefaultFloatValue.class;
     }
 
@@ -63,11 +62,22 @@ public class FloatKeyHandler extends KeyHandler<Float> {
         this.setDefaultValue(0f);
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see org.appwork.storage.config.KeyHandler#initHandler()
-     */
+    @Override
+    protected Float getValueStorage() {
+        final Object rawValue = getRawValueStorage();
+        if (rawValue instanceof Number) {
+            return ((Number) rawValue).floatValue();
+        } else if (rawValue instanceof String) {
+            if (StringUtils.equalsIgnoreCase("null", (String) rawValue)) {
+                return null;
+            } else {
+                return Float.valueOf((String) rawValue);
+            }
+        } else {
+            return (Float) rawValue;
+        }
+    }
+
     @Override
     protected void initHandler() {
         try {
@@ -78,24 +88,13 @@ public class FloatKeyHandler extends KeyHandler<Float> {
         setStorageSyncMode(getDefaultStorageSyncMode());
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see org.appwork.storage.config.KeyHandler#putValue(java.lang.Object)
-     */
     @Override
     protected void putValue(final Float object) {
         this.storageHandler.getPrimitiveStorage().put(this.getKey(), object);
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.appwork.storage.config.KeyHandler#validateValue(java.lang.Object)
-     */
     @Override
     protected void validateValue(final Float object) throws Throwable {
-        // TODO Auto-generated method stub
 
     }
 

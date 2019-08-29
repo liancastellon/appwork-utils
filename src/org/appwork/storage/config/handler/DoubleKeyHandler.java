@@ -36,6 +36,7 @@ package org.appwork.storage.config.handler;
 import java.lang.annotation.Annotation;
 
 import org.appwork.storage.config.annotations.DefaultDoubleValue;
+import org.appwork.utils.StringUtils;
 
 /**
  * @author Thomas
@@ -49,7 +50,6 @@ public class DoubleKeyHandler extends KeyHandler<Double> {
      */
     public DoubleKeyHandler(final StorageHandler<?> storageHandler, final String key) {
         super(storageHandler, key);
-        // TODO Auto-generated constructor stub
     }
 
     @Override
@@ -62,34 +62,34 @@ public class DoubleKeyHandler extends KeyHandler<Double> {
         this.setDefaultValue(0d);
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see org.appwork.storage.config.handler.KeyHandler#initHandler()
-     */
+    @Override
+    protected Double getValueStorage() {
+        final Object rawValue = getRawValueStorage();
+        if (rawValue instanceof Number) {
+            return ((Number) rawValue).doubleValue();
+        } else if (rawValue instanceof String) {
+            if (StringUtils.equalsIgnoreCase("null", (String) rawValue)) {
+                return null;
+            } else {
+                return Double.valueOf((String) rawValue);
+            }
+        } else {
+            return (Double) rawValue;
+        }
+    }
+
     @Override
     protected void initHandler() throws Throwable {
         setStorageSyncMode(getDefaultStorageSyncMode());
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see org.appwork.storage.config.KeyHandler#putValue(java.lang.Object)
-     */
     @Override
     protected void putValue(final Double object) {
         this.storageHandler.getPrimitiveStorage().put(this.getKey(), object);
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.appwork.storage.config.KeyHandler#validateValue(java.lang.Object)
-     */
     @Override
     protected void validateValue(final Double object) throws Throwable {
-        // TODO Auto-generated method stub
 
     }
 
