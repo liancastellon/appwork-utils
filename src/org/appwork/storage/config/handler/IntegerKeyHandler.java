@@ -39,6 +39,7 @@ import org.appwork.storage.config.ValidationException;
 import org.appwork.storage.config.annotations.DefaultIntValue;
 import org.appwork.storage.config.annotations.LookUpKeys;
 import org.appwork.storage.config.annotations.SpinnerValidator;
+import org.appwork.utils.StringUtils;
 
 /**
  * @author Thomas
@@ -73,11 +74,6 @@ public class IntegerKeyHandler extends KeyHandler<Integer> {
         this.setDefaultValue(Integer.valueOf(0));
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.appwork.storage.config.KeyHandler#initHandler()
-     */
     @Override
     protected void initHandler() {
         this.validator = this.getAnnotation(SpinnerValidator.class);
@@ -88,21 +84,27 @@ public class IntegerKeyHandler extends KeyHandler<Integer> {
         setStorageSyncMode(getDefaultStorageSyncMode());
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.appwork.storage.config.KeyHandler#putValue(java.lang.Object)
-     */
+    @Override
+    protected Integer getValueStorage() {
+        final Object rawValue = getRawValueStorage();
+        if (rawValue instanceof Number) {
+            return ((Number) rawValue).intValue();
+        } else if (rawValue instanceof String) {
+            if (StringUtils.equalsIgnoreCase("null", (String) rawValue)) {
+                return null;
+            } else {
+                return Integer.parseInt((String) rawValue);
+            }
+        } else {
+            return (Integer) rawValue;
+        }
+    }
+
     @Override
     protected void putValue(final Integer object) {
         this.storageHandler.getPrimitiveStorage().put(this.getKey(), object);
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.appwork.storage.config.KeyHandler#validateValue(java.lang.Object)
-     */
     @Override
     protected void validateValue(final Integer object) throws Throwable {
         if (this.validator != null) {

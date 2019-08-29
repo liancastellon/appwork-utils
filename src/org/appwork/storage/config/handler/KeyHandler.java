@@ -531,7 +531,12 @@ public abstract class KeyHandler<RawClass> {
         }
     }
 
-    public RawClass getValueStorage() {
+    protected RawClass getValueStorage() {
+        Object rawValue = getRawValueStorage();
+        return (RawClass) rawValue;
+    }
+
+    protected Object getRawValueStorage() {
         final Storage storage = this.getStorageHandler().getPrimitiveStorage();
         if (storage.hasProperty(this.getKey())) {
             // primitiveSTorage contains a value. we do not need to calculate
